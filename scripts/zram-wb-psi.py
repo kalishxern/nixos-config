@@ -167,27 +167,31 @@ def _sighup(_signum: int, _frame: object) -> None:
 
 signal.signal(signal.SIGTERM, _sigterm); signal.signal(signal.SIGINT, _sigterm); signal.signal(signal.SIGHUP, _sighup)
 
-def _apply_reload(psi_fh, poller, psi_fd: int):
-    if not CFG.hot_reload_path:
-        log.warning("Reload requested but ZRAM_WB_HOT_RELOAD_PATH is not set; nothing to reload."); return psi_fh, psi_fd
+def _apply_reload_file(cfg: "Config") -> Optional[str]:
+    if not cfg.hot_reload_path or not os.path.exists(cfg.hot_reload_path): return None
     try:
-        with open(CFG.hot_reload_path) as fh: lines = fh.read().splitlines()
+        with open(cfg.hot_reload_path) as fh: lines = fh.read().splitlines()
     except OSError as exc:
-        log.warning("Reload requested but cannot read %s: %s", CFG.hot_reload_path, exc); return psi_fh, psi_fd
-
+        log.warning("Cannot read %s: %s", cfg.hot_reload_path, exc); return None
     new_trigger = None
     for line in lines:
         if "=" not in line: continue
         k, _, v = line.partition("="); k = k.strip(); v = v.strip()
         try:
-            if k == "idle_age_sec": CFG.idle_age_sec = float(v)
-            elif k == "wb_interval_sec": CFG.wb_interval_sec = float(v)
-            elif k == "wb_burst": CFG.wb_burst = int(v)
-            elif k == "idle_mark_sec": CFG.idle_mark_sec = float(v)
+            if k == "idle_age_sec": cfg.idle_age_sec = float(v)
+            elif k == "wb_interval_sec": cfg.wb_interval_sec = float(v)
+            elif k == "wb_burst": cfg.wb_burst = int(v)
+            elif k == "idle_mark_sec": cfg.idle_mark_sec = float(v)
             elif k == "psi_trigger": new_trigger = v
             else: log.warning("Reload: unknown key %r ignored.", k)
         except ValueError as exc:
             log.warning("Reload: bad value for %s=%r ignored: %s", k, v, exc)
+    return new_trigger
+
+def _apply_reload(psi_fh, poller, psi_fd: int):
+    if not CFG.hot_reload_path:
+        log.warning("Reload requested but ZRAM_WB_HOT_RELOAD_PATH is not set; nothing to reload."); return psi_fh, psi_fd
+    new_trigger = _apply_reload_file(CFG)
     log.info("Reloaded tunables from %s (idle_age_sec=%s wb_interval_sec=%s wb_burst=%s idle_mark_sec=%s)", CFG.hot_reload_path, CFG.idle_age_sec, CFG.wb_interval_sec, CFG.wb_burst, CFG.idle_mark_sec)
 
     if new_trigger and new_trigger != CFG.psi_trigger:
@@ -206,6 +210,11 @@ def _apply_reload(psi_fh, poller, psi_fd: int):
     return psi_fh, psi_fd
 
 def main() -> int:
+    startup_trigger = _apply_reload_file(CFG)
+    if startup_trigger: CFG.psi_trigger = startup_trigger
+    if CFG.hot_reload_path and os.path.exists(CFG.hot_reload_path):
+        log.info("Pre-seeded tunables applied at startup from %s (idle_age_sec=%s wb_interval_sec=%s wb_burst=%s idle_mark_sec=%s psi_trigger=%s)", CFG.hot_reload_path, CFG.idle_age_sec, CFG.wb_interval_sec, CFG.wb_burst, CFG.idle_mark_sec, CFG.psi_trigger)
+
     if not os.path.exists(CFG.psi_path):
         log.critical("PSI interface not found at %s. Is CONFIG_PSI enabled?", CFG.psi_path); return 1
     if not os.path.isdir(CFG.zram_sysfs):
