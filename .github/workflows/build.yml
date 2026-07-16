@@ -37,7 +37,7 @@ jobs:
       - name: Restore ccache
         uses: actions/cache/restore@main
         with:
-          path: ~/.cache/ccache
+          path: /var/cache/ccache
           key: ccache-${{ runner.os }}-${{ hashFiles('flake.lock') }}-${{ github.run_id }}
           restore-keys: |
             ccache-${{ runner.os }}-${{ hashFiles('flake.lock') }}-
@@ -45,9 +45,9 @@ jobs:
 
       - name: Prepare ccache dir
         run: |
-          mkdir -p ~/.cache/ccache
-          chmod -R 0770 ~/.cache/ccache
-          echo "CCACHE_DIR=$HOME/.cache/ccache" >> $GITHUB_ENV
+          sudo mkdir -p /var/cache/ccache
+          sudo chmod -R 0770 /var/cache/ccache
+          echo "CCACHE_DIR=$HOME/var/cache/ccache" >> $GITHUB_ENV
 
       - uses: DeterminateSystems/nix-installer-action@main
         with:
@@ -84,7 +84,7 @@ jobs:
         if: always()
         uses: actions/cache/save@main
         with:
-          path: ~/.cache/ccache
+          path: /var/cache/ccache
           key: ccache-${{ runner.os }}-${{ hashFiles('flake.lock') }}-${{ github.run_id }}
 
       - name: Cleanup old ccache entries
