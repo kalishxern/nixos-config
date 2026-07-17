@@ -46,8 +46,9 @@ jobs:
       - name: Prepare ccache dir
         run: |
           sudo mkdir -p /var/cache/ccache
-          sudo chmod -R 0770 /var/cache/ccache
-          echo "CCACHE_DIR=$HOME/var/cache/ccache" >> $GITHUB_ENV
+          sudo chown -R "$(id -u):$(id -g)" /var/cache/ccache
+          sudo chmod -R 0755 /var/cache/ccache
+          echo "CCACHE_DIR=/var/cache/ccache" >> $GITHUB_ENV
 
       - uses: DeterminateSystems/nix-installer-action@main
         with:
