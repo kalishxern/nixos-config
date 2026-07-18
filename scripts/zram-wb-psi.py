@@ -8,7 +8,7 @@ class Config:
     psi_path: str = "/proc/pressure/memory"; psi_trigger: str = "some 150000 1000000"
     zram_dev: str = "zram0"; idle_mark_sec: float = 2.0; wb_interval_sec: float = 30.0; idle_age_sec: float = 60.0
     wb_burst: int = 1; poll_timeout_ms: int = 5000; metrics_path: Optional[str] = None; log_level: str = "INFO"; hot_reload_path: Optional[str] = None
-    recomp_enable: bool = True; recomp_algo: str = "zstd"; recomp_max_pages: int = 4096
+    recomp_enable: bool = True; recomp_algo: str = "zstd"; recomp_max_pages: int = 4096; wb_limit_mb: int = 2048
     @property
     def zram_sysfs(self) -> str: return f"/sys/block/{self.zram_dev}"
     @property
@@ -30,6 +30,7 @@ class Config:
         d.hot_reload_path = os.environ.get("ZRAM_WB_HOT_RELOAD_PATH", d.hot_reload_path)
         d.recomp_enable = os.environ.get("ZRAM_WB_RECOMP_ENABLE", "1") not in ("0", "false", "no"); d.recomp_algo = os.environ.get("ZRAM_WB_RECOMP_ALGO", d.recomp_algo)
         d.recomp_max_pages = int(os.environ.get("ZRAM_WB_RECOMP_MAX_PAGES", d.recomp_max_pages))
+        d.wb_limit_mb = int(os.environ.get("ZRAM_WB_LIMIT_MB", d.wb_limit_mb))
         return d
 
 CFG = Config.from_env()
@@ -45,6 +46,7 @@ class Metrics:
     recompress_triggered: int = 0; recompress_failed: int = 0; recompress_bytes_saved: int = 0
     recompress_unavailable: int = 0
     compact_triggered: int = 0; compact_pages_freed: int = 0
+    wb_budget_remaining_mb: float = -1.0
     start_ts: float = field(default_factory=time.monotonic)
 
     def to_prom(self) -> str:
@@ -66,6 +68,7 @@ class Metrics:
                 "# HELP zram_wb_recompress_unavailable Cycles skipped because recompression is disabled or unregistered", "# TYPE zram_wb_recompress_unavailable counter", f"zram_wb_recompress_unavailable {self.recompress_unavailable}", "",
                 "# HELP zram_wb_compact_total Total zsmalloc compaction attempts", "# TYPE zram_wb_compact_total counter", f"zram_wb_compact_total {self.compact_triggered}", "",
                 "# HELP zram_wb_compact_pages_freed Cumulative 4K pages freed by zsmalloc compaction", "# TYPE zram_wb_compact_pages_freed counter", f"zram_wb_compact_pages_freed {self.compact_pages_freed}", "",
+                "# HELP zram_wb_writeback_budget_remaining_mb Remaining writeback_limit budget until next zram reset", "# TYPE zram_wb_writeback_budget_remaining_mb gauge", f"zram_wb_writeback_budget_remaining_mb {self.wb_budget_remaining_mb:.1f}", "",
                 "# HELP zram_wb_uptime_seconds Daemon uptime", "# TYPE zram_wb_uptime_seconds gauge", f"zram_wb_uptime_seconds {uptime:.1f}", "",
             ]
         return "\n".join(lines)
@@ -113,6 +116,12 @@ def _pages_compacted() -> int:
         with open(f"{CFG.zram_sysfs}/mm_stat") as fh: return int(fh.read().split()[6])
     except (OSError, IndexError, ValueError) as exc:
         log.error("_pages_compacted(): could not read mm_stat: %s", exc); return -1
+
+def _wb_budget_pages() -> int:
+    try:
+        with open(f"{CFG.zram_sysfs}/writeback_limit") as fh: return int(fh.read().strip())
+    except (OSError, ValueError) as exc:
+        log.error("_wb_budget_pages(): could not read writeback_limit: %s", exc); return -1
 
 _event_queue: queue.Queue[bool] = queue.Queue(maxsize=64)
 _stop_event = threading.Event()
@@ -223,6 +232,9 @@ def _worker() -> None:
 
 def _flush_metrics() -> None:
     try:
+        wb_budget = _wb_budget_pages()
+        with METRICS_LOCK:
+            if wb_budget >= 0: METRICS.wb_budget_remaining_mb = wb_budget / 256.0
         tmp = f"{CFG.metrics_path}.$$"
         with open(tmp, "w") as fh: fh.write(METRICS.to_prom())
         os.replace(tmp, CFG.metrics_path)
@@ -293,6 +305,8 @@ def main() -> int:
     if not os.path.isdir(CFG.zram_sysfs):
         log.critical("ZRAM device %s not found at %s.", CFG.zram_dev, CFG.zram_sysfs); return 1
     _register_recomp_algo()
+    if CFG.wb_limit_mb > 0:
+        write_sysfs(f"{CFG.zram_sysfs}/writeback_limit", str(CFG.wb_limit_mb * 256)); write_sysfs(f"{CFG.zram_sysfs}/writeback_limit_enable", "1"); log.info("writeback_limit armed: %s MB budget on %s until next reset", CFG.wb_limit_mb, CFG.zram_dev)
 
     try: psi_fh = open(CFG.psi_path, "r+")
     except OSError as exc:
