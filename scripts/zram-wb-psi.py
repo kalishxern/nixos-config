@@ -43,6 +43,7 @@ class Metrics:
     writebacks_failed: int = 0; errors: int = 0; last_writeback_ts: float = 0.0
     last_cycle_pages_written: int = 0; max_cycle_pages_written: int = 0; cumulative_pages_written: int = 0
     recompress_triggered: int = 0; recompress_failed: int = 0; recompress_bytes_saved: int = 0
+    recompress_unavailable: int = 0
     start_ts: float = field(default_factory=time.monotonic)
 
     def to_prom(self) -> str:
@@ -61,6 +62,7 @@ class Metrics:
                 "# HELP zram_wb_recompress_total Total recompress attempts", "# TYPE zram_wb_recompress_total counter", f"zram_wb_recompress_total {self.recompress_triggered}", "",
                 "# HELP zram_wb_recompress_failures Total recompress failures", "# TYPE zram_wb_recompress_failures counter", f"zram_wb_recompress_failures {self.recompress_failed}", "",
                 "# HELP zram_wb_recompress_bytes_saved Cumulative bytes freed in the zsmalloc pool by recompression", "# TYPE zram_wb_recompress_bytes_saved counter", f"zram_wb_recompress_bytes_saved {self.recompress_bytes_saved}", "",
+                "# HELP zram_wb_recompress_unavailable Cycles skipped because recompression is disabled or unregistered", "# TYPE zram_wb_recompress_unavailable counter", f"zram_wb_recompress_unavailable {self.recompress_unavailable}", "",
                 "# HELP zram_wb_uptime_seconds Daemon uptime", "# TYPE zram_wb_uptime_seconds gauge", f"zram_wb_uptime_seconds {uptime:.1f}", "",
             ]
         return "\n".join(lines)
@@ -121,13 +123,17 @@ def _mark_idle() -> bool:
 def _register_recomp_algo() -> None:
     global _recomp_available
     if not CFG.recomp_enable: _recomp_available = False; return
-    if write_sysfs(CFG.recomp_algo_file, f"algo={CFG.recomp_algo} priority=1"): log.info("Registered %s as priority-1 recompression algorithm on %s.", CFG.recomp_algo, CFG.zram_dev)
+    try:
+        with open(CFG.recomp_algo_file) as fh: listed = fh.read()
+    except OSError as exc:
+        _recomp_available = False; log.warning("recomp_algorithm unreadable on %s (%s); recompression disabled for this run.", CFG.zram_dev, exc); return
+    if f"[{CFG.recomp_algo}]" in listed: _recomp_available = True; log.info("%s confirmed active as a registered recompression algorithm on %s.", CFG.recomp_algo, CFG.zram_dev)
     else:
-        _recomp_available = False; log.warning("recomp_algorithm rejected on %s (requires CONFIG_ZRAM_MULTI_COMP); recompression disabled for this run.", CFG.zram_dev)
+        _recomp_available = False; log.warning("%s not active in recomp_algorithm on %s (got: %r); register it in zram-custom.service before disksize is set, not from this daemon.", CFG.recomp_algo, CFG.zram_dev, listed.strip())
 
 def _trigger_recompress(type_: str) -> bool:
     global _recomp_available
-    if not (CFG.recomp_enable and _recomp_available): return False
+    if not (CFG.recomp_enable and _recomp_available): _bump("recompress_unavailable"); return False
     before = _compr_size()
     val = f"type={type_} priority=1 max_pages={CFG.recomp_max_pages}" if CFG.recomp_max_pages > 0 else f"type={type_} priority=1"
     if not write_sysfs(CFG.recomp_file, val):
