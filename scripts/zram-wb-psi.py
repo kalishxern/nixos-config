@@ -8,7 +8,7 @@ class Config:
     psi_path: str = "/proc/pressure/memory"; psi_trigger: str = "some 150000 1000000"
     zram_dev: str = "zram0"; idle_mark_sec: float = 2.0; wb_interval_sec: float = 30.0; idle_age_sec: float = 60.0
     wb_burst: int = 1; poll_timeout_ms: int = 5000; metrics_path: Optional[str] = None; log_level: str = "INFO"; hot_reload_path: Optional[str] = None
-    recomp_enable: bool = True; recomp_algo: str = "zstd"; recomp_max_pages: int = 4096
+    recomp_enable: bool = True; recomp_algo: str = "zstd"; recomp_max_pages: int = 6891
     @property
     def zram_sysfs(self) -> str: return f"/sys/block/{self.zram_dev}"
     @property
@@ -297,7 +297,7 @@ def main() -> int:
 
         for fd, flag in evts:
             if fd == wake_r:
-                try: os.read(wake_r, 4096)
+                try: os.read(wake_r, 6891)
                 except OSError: pass
                 continue
             if fd != psi_fd or not (flag & select.POLLPRI): continue
