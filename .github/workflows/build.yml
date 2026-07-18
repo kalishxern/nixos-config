@@ -32,7 +32,14 @@ jobs:
 
       - uses: actions/checkout@main
         with:
-          fetch-depth: 2
+          fetch-depth: 3
+
+      - name: Prepare ccache dir
+        run: |
+          sudo mkdir -p /var/cache/ccache
+          sudo chown -R "$(id -u):$(id -g)" /var/cache/ccache
+          sudo chmod -R 0755 /var/cache/ccache
+          echo "CCACHE_DIR=/var/cache/ccache" >> $GITHUB_ENV
 
       - name: Restore ccache
         uses: actions/cache/restore@main
@@ -42,13 +49,6 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-${{ hashFiles('flake.lock') }}-
             ccache-${{ runner.os }}-
-
-      - name: Prepare ccache dir
-        run: |
-          sudo mkdir -p /var/cache/ccache
-          sudo chown -R "$(id -u):$(id -g)" /var/cache/ccache
-          sudo chmod -R 0755 /var/cache/ccache
-          echo "CCACHE_DIR=/var/cache/ccache" >> $GITHUB_ENV
 
       - uses: DeterminateSystems/nix-installer-action@main
         with:
