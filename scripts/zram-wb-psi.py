@@ -8,7 +8,7 @@ class Config:
     psi_path: str = "/proc/pressure/memory"; psi_trigger: str = "some 150000 1000000"
     zram_dev: str = "zram0"; idle_mark_sec: float = 2.0; wb_interval_sec: float = 30.0; idle_age_sec: float = 60.0
     wb_burst: int = 1; poll_timeout_ms: int = 5000; metrics_path: Optional[str] = None; log_level: str = "INFO"; hot_reload_path: Optional[str] = None
-    recomp_enable: bool = True; recomp_algo: str = "zstd"; recomp_max_pages: int = 6891
+    recomp_enable: bool = True; recomp_algo: str = "zstd"; recomp_max_pages: int = 4096
     @property
     def zram_sysfs(self) -> str: return f"/sys/block/{self.zram_dev}"
     @property
@@ -44,6 +44,7 @@ class Metrics:
     last_cycle_pages_written: int = 0; max_cycle_pages_written: int = 0; cumulative_pages_written: int = 0
     recompress_triggered: int = 0; recompress_failed: int = 0; recompress_bytes_saved: int = 0
     recompress_unavailable: int = 0
+    compact_triggered: int = 0; compact_pages_freed: int = 0
     start_ts: float = field(default_factory=time.monotonic)
 
     def to_prom(self) -> str:
@@ -63,6 +64,8 @@ class Metrics:
                 "# HELP zram_wb_recompress_failures Total recompress failures", "# TYPE zram_wb_recompress_failures counter", f"zram_wb_recompress_failures {self.recompress_failed}", "",
                 "# HELP zram_wb_recompress_bytes_saved Cumulative bytes freed in the zsmalloc pool by recompression", "# TYPE zram_wb_recompress_bytes_saved counter", f"zram_wb_recompress_bytes_saved {self.recompress_bytes_saved}", "",
                 "# HELP zram_wb_recompress_unavailable Cycles skipped because recompression is disabled or unregistered", "# TYPE zram_wb_recompress_unavailable counter", f"zram_wb_recompress_unavailable {self.recompress_unavailable}", "",
+                "# HELP zram_wb_compact_total Total zsmalloc compaction attempts", "# TYPE zram_wb_compact_total counter", f"zram_wb_compact_total {self.compact_triggered}", "",
+                "# HELP zram_wb_compact_pages_freed Cumulative 4K pages freed by zsmalloc compaction", "# TYPE zram_wb_compact_pages_freed counter", f"zram_wb_compact_pages_freed {self.compact_pages_freed}", "",
                 "# HELP zram_wb_uptime_seconds Daemon uptime", "# TYPE zram_wb_uptime_seconds gauge", f"zram_wb_uptime_seconds {uptime:.1f}", "",
             ]
         return "\n".join(lines)
@@ -104,6 +107,12 @@ def _compr_size() -> int:
         with open(f"{CFG.zram_sysfs}/mm_stat") as fh: return int(fh.read().split()[1])
     except (OSError, IndexError, ValueError) as exc:
         log.error("_compr_size(): could not read mm_stat: %s", exc); return -1
+
+def _pages_compacted() -> int:
+    try:
+        with open(f"{CFG.zram_sysfs}/mm_stat") as fh: return int(fh.read().split()[6])
+    except (OSError, IndexError, ValueError) as exc:
+        log.error("_pages_compacted(): could not read mm_stat: %s", exc); return -1
 
 _event_queue: queue.Queue[bool] = queue.Queue(maxsize=64)
 _stop_event = threading.Event()
@@ -167,6 +176,17 @@ def _trigger_writeback(wb_type: str) -> bool:
     log.info("%s writeback moved %s pages (%s KB) on %s", wb_type, moved if moved >= 0 else "?", moved * 4 if moved >= 0 else "?", CFG.zram_dev)
     return True
 
+def _trigger_compact() -> bool:
+    before = _pages_compacted()
+    if not write_sysfs(f"{CFG.zram_sysfs}/compact", "1"): _bump("errors"); return False
+    _bump("compact_triggered")
+    after = _pages_compacted()
+    freed = (after - before) if (before >= 0 and after >= 0) else -1
+    with METRICS_LOCK:
+        if freed > 0: METRICS.compact_pages_freed += freed
+    log.info("compact freed %s pages in zsmalloc pool on %s", freed if freed >= 0 else "?", CFG.zram_dev)
+    return True
+
 def _worker() -> None:
     limiter = TokenBucket()
     while not _stop_event.is_set():
@@ -189,11 +209,14 @@ def _worker() -> None:
         if _stop_event.wait(CFG.idle_mark_sec):
             log.info("Shutdown requested mid-settle; aborting this writeback cycle."); break
 
-        log.info("Attempting idle recompression before writeback on %s …", CFG.zram_dev)
-        _trigger_recompress("idle")
+        log.info("Attempting huge+idle recompression before writeback on %s …", CFG.zram_dev)
+        _trigger_recompress("huge_idle")
 
         log.info("Triggering idle+huge_idle writeback on %s …", CFG.zram_dev)
         _trigger_writeback("idle"); _trigger_writeback("huge_idle")
+
+        log.info("Compacting zsmalloc pool on %s …", CFG.zram_dev)
+        _trigger_compact()
 
         if CFG.metrics_path: _flush_metrics()
     log.info("Worker thread exiting.")
@@ -297,7 +320,7 @@ def main() -> int:
 
         for fd, flag in evts:
             if fd == wake_r:
-                try: os.read(wake_r, 6891)
+                try: os.read(wake_r, 4096)
                 except OSError: pass
                 continue
             if fd != psi_fd or not (flag & select.POLLPRI): continue
