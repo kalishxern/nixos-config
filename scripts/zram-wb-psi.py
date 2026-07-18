@@ -8,8 +8,13 @@ class Config:
     psi_path: str = "/proc/pressure/memory"; psi_trigger: str = "some 150000 1000000"
     zram_dev: str = "zram0"; idle_mark_sec: float = 2.0; wb_interval_sec: float = 30.0; idle_age_sec: float = 60.0
     wb_burst: int = 1; poll_timeout_ms: int = 5000; metrics_path: Optional[str] = None; log_level: str = "INFO"; hot_reload_path: Optional[str] = None
+    recomp_enable: bool = True; recomp_algo: str = "zstd"; recomp_max_pages: int = 4096
     @property
     def zram_sysfs(self) -> str: return f"/sys/block/{self.zram_dev}"
+    @property
+    def recomp_algo_file(self) -> str: return f"{self.zram_sysfs}/recomp_algorithm"
+    @property
+    def recomp_file(self) -> str: return f"{self.zram_sysfs}/recompress"
     @property
     def idle_file(self) -> str: return f"{self.zram_sysfs}/idle"
     @property
@@ -23,6 +28,8 @@ class Config:
         d.wb_burst = int(os.environ.get("ZRAM_WB_BURST", d.wb_burst)); d.poll_timeout_ms = int(os.environ.get("ZRAM_WB_POLL_TIMEOUT_MS", d.poll_timeout_ms))
         d.metrics_path = os.environ.get("ZRAM_WB_METRICS_PATH", d.metrics_path); d.log_level = os.environ.get("ZRAM_WB_LOG_LEVEL", d.log_level)
         d.hot_reload_path = os.environ.get("ZRAM_WB_HOT_RELOAD_PATH", d.hot_reload_path)
+        d.recomp_enable = os.environ.get("ZRAM_WB_RECOMP_ENABLE", "1") not in ("0", "false", "no"); d.recomp_algo = os.environ.get("ZRAM_WB_RECOMP_ALGO", d.recomp_algo)
+        d.recomp_max_pages = int(os.environ.get("ZRAM_WB_RECOMP_MAX_PAGES", d.recomp_max_pages))
         return d
 
 CFG = Config.from_env()
@@ -35,6 +42,7 @@ class Metrics:
     psi_events: int = 0; writebacks_triggered: int = 0; writebacks_skipped_rate: int = 0
     writebacks_failed: int = 0; errors: int = 0; last_writeback_ts: float = 0.0
     last_cycle_pages_written: int = 0; max_cycle_pages_written: int = 0; cumulative_pages_written: int = 0
+    recompress_triggered: int = 0; recompress_failed: int = 0; recompress_bytes_saved: int = 0
     start_ts: float = field(default_factory=time.monotonic)
 
     def to_prom(self) -> str:
@@ -50,6 +58,9 @@ class Metrics:
                 "# HELP zram_wb_last_cycle_pages_written 4K pages moved by the most recent writeback call", "# TYPE zram_wb_last_cycle_pages_written gauge", f"zram_wb_last_cycle_pages_written {self.last_cycle_pages_written}", "",
                 "# HELP zram_wb_max_cycle_pages_written Largest single-call page count observed since start", "# TYPE zram_wb_max_cycle_pages_written gauge", f"zram_wb_max_cycle_pages_written {self.max_cycle_pages_written}", "",
                 "# HELP zram_wb_cumulative_pages_written Total 4K pages moved across all writeback calls since start", "# TYPE zram_wb_cumulative_pages_written counter", f"zram_wb_cumulative_pages_written {self.cumulative_pages_written}", "",
+                "# HELP zram_wb_recompress_total Total recompress attempts", "# TYPE zram_wb_recompress_total counter", f"zram_wb_recompress_total {self.recompress_triggered}", "",
+                "# HELP zram_wb_recompress_failures Total recompress failures", "# TYPE zram_wb_recompress_failures counter", f"zram_wb_recompress_failures {self.recompress_failed}", "",
+                "# HELP zram_wb_recompress_bytes_saved Cumulative bytes freed in the zsmalloc pool by recompression", "# TYPE zram_wb_recompress_bytes_saved counter", f"zram_wb_recompress_bytes_saved {self.recompress_bytes_saved}", "",
                 "# HELP zram_wb_uptime_seconds Daemon uptime", "# TYPE zram_wb_uptime_seconds gauge", f"zram_wb_uptime_seconds {uptime:.1f}", "",
             ]
         return "\n".join(lines)
@@ -86,10 +97,17 @@ def _bd_writes() -> int:
     except (OSError, IndexError, ValueError) as exc:
         log.error("_bd_writes(): could not read bd_stat: %s", exc); return -1
 
+def _compr_size() -> int:
+    try:
+        with open(f"{CFG.zram_sysfs}/mm_stat") as fh: return int(fh.read().split()[1])
+    except (OSError, IndexError, ValueError) as exc:
+        log.error("_compr_size(): could not read mm_stat: %s", exc); return -1
+
 _event_queue: queue.Queue[bool] = queue.Queue(maxsize=64)
 _stop_event = threading.Event()
 _idle_by_age = True
 _wb_keyval = True
+_recomp_available = True
 
 def _mark_idle() -> bool:
     global _idle_by_age
@@ -99,6 +117,28 @@ def _mark_idle() -> bool:
         _idle_by_age = False; log.warning("Age-based idle marking (needs CONFIG_ZRAM_TRACK_ENTRY_ACTIME) rejected by kernel; falling back to blanket 'all' for remaining runtime.")
         return write_sysfs(CFG.idle_file, "all")
     return False
+
+def _register_recomp_algo() -> None:
+    global _recomp_available
+    if not CFG.recomp_enable: _recomp_available = False; return
+    if write_sysfs(CFG.recomp_algo_file, f"algo={CFG.recomp_algo} priority=1"): log.info("Registered %s as priority-1 recompression algorithm on %s.", CFG.recomp_algo, CFG.zram_dev)
+    else:
+        _recomp_available = False; log.warning("recomp_algorithm rejected on %s (requires CONFIG_ZRAM_MULTI_COMP); recompression disabled for this run.", CFG.zram_dev)
+
+def _trigger_recompress(type_: str) -> bool:
+    global _recomp_available
+    if not (CFG.recomp_enable and _recomp_available): return False
+    before = _compr_size()
+    val = f"type={type_} priority=1 max_pages={CFG.recomp_max_pages}" if CFG.recomp_max_pages > 0 else f"type={type_} priority=1"
+    if not write_sysfs(CFG.recomp_file, val):
+        _recomp_available = False; _bump("recompress_failed"); log.warning("recompress rejected on %s; disabling recompression for this run.", CFG.zram_dev); return False
+    _bump("recompress_triggered")
+    after = _compr_size()
+    saved = (before - after) if (before >= 0 and after >= 0) else -1
+    with METRICS_LOCK:
+        if saved > 0: METRICS.recompress_bytes_saved += saved
+    log.info("%s recompress freed %s bytes in zsmalloc pool on %s", type_, saved if saved >= 0 else "?", CFG.zram_dev)
+    return True
 
 def _trigger_writeback(wb_type: str) -> bool:
     global _wb_keyval
@@ -143,6 +183,9 @@ def _worker() -> None:
         if _stop_event.wait(CFG.idle_mark_sec):
             log.info("Shutdown requested mid-settle; aborting this writeback cycle."); break
 
+        log.info("Attempting idle recompression before writeback on %s …", CFG.zram_dev)
+        _trigger_recompress("idle")
+
         log.info("Triggering idle+huge_idle writeback on %s …", CFG.zram_dev)
         _trigger_writeback("idle"); _trigger_writeback("huge_idle")
 
@@ -182,6 +225,7 @@ def _apply_reload_file(cfg: "Config") -> Optional[str]:
             elif k == "wb_interval_sec": cfg.wb_interval_sec = float(v)
             elif k == "wb_burst": cfg.wb_burst = int(v)
             elif k == "idle_mark_sec": cfg.idle_mark_sec = float(v)
+            elif k == "recomp_enable": cfg.recomp_enable = v not in ("0", "false", "no")
             elif k == "psi_trigger": new_trigger = v
             else: log.warning("Reload: unknown key %r ignored.", k)
         except ValueError as exc:
@@ -219,6 +263,7 @@ def main() -> int:
         log.critical("PSI interface not found at %s. Is CONFIG_PSI enabled?", CFG.psi_path); return 1
     if not os.path.isdir(CFG.zram_sysfs):
         log.critical("ZRAM device %s not found at %s.", CFG.zram_dev, CFG.zram_sysfs); return 1
+    _register_recomp_algo()
 
     try: psi_fh = open(CFG.psi_path, "r+")
     except OSError as exc:
