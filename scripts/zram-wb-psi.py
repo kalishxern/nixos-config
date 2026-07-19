@@ -71,7 +71,7 @@ class Metrics:
                 "# HELP zram_wb_writeback_budget_remaining_mb Remaining writeback_limit budget until next zram reset", "# TYPE zram_wb_writeback_budget_remaining_mb gauge", f"zram_wb_writeback_budget_remaining_mb {self.wb_budget_remaining_mb:.1f}", "",
                 "# HELP zram_wb_uptime_seconds Daemon uptime", "# TYPE zram_wb_uptime_seconds gauge", f"zram_wb_uptime_seconds {uptime:.1f}", "",
             ]
-        return "\n".join(lines)
+        return "\n".join(lines) + "\n"
 
 METRICS = Metrics()
 METRICS_LOCK = threading.Lock()
@@ -102,7 +102,7 @@ def write_sysfs(path: str, val: str) -> bool:
 
 def _bd_writes() -> int:
     try:
-        with open(f"{CFG.zram_sysfs}/bd_stat") as fh: return int(fh.read().split()[5]) // 8
+        with open(f"{CFG.zram_sysfs}/bd_stat") as fh: return int(fh.read().split()[2])
     except (OSError, IndexError, ValueError) as exc:
         log.error("_bd_writes(): could not read bd_stat: %s", exc); return -1
 
@@ -201,39 +201,48 @@ def _trigger_compact() -> bool:
     log.info("compact freed %s pages in zsmalloc pool on %s", freed if freed >= 0 else "?", CFG.zram_dev)
     return True
 
+_last_rearm_ts = 0.0
+def _maybe_rearm_wb_budget() -> None:
+    global _last_rearm_ts
+    if CFG.wb_limit_mb <= 0: return
+    now = time.monotonic()
+    if now - _last_rearm_ts < 86400.0: return
+    remaining = _wb_budget_pages()
+    if remaining < 0: return
+    if remaining <= int(CFG.wb_limit_mb * 256 * 0.10):
+        if write_sysfs(f"{CFG.zram_sysfs}/writeback_limit", str(CFG.wb_limit_mb * 256)): log.info("writeback_limit re-armed to %d MB on %s (was %.1f MB remaining).", CFG.wb_limit_mb, CFG.zram_dev, remaining / 256.0)
+    _last_rearm_ts = now
+
+def _run_cycle(limiter: "TokenBucket") -> None:
+    if not limiter.consume():
+        _bump("writebacks_skipped_rate"); log.info("Rate-limited: skipping writeback.")
+        if CFG.metrics_path: _flush_metrics()
+        return
+    _maybe_rearm_wb_budget()
+    with METRICS_LOCK: METRICS.last_cycle_pages_written = 0
+    log.info("Marking pages idle (age >= %s) on %s …", f"{int(CFG.idle_age_sec)}s" if _idle_by_age else "all", CFG.zram_dev)
+    if not _mark_idle():
+        _bump("writebacks_failed")
+        if CFG.metrics_path: _flush_metrics()
+        return
+    log.info("Waiting %.1f s for pages to settle …", CFG.idle_mark_sec)
+    if _stop_event.wait(CFG.idle_mark_sec): log.info("Shutdown requested mid-settle; aborting this writeback cycle."); return
+    log.info("Attempting huge_idle+huge recompression before writeback on %s …", CFG.zram_dev)
+    _trigger_recompress("huge_idle"); _trigger_recompress("huge")
+    log.info("Triggering huge_idle+idle+incompressible writeback on %s …", CFG.zram_dev)
+    _trigger_writeback("huge_idle"); _trigger_writeback("idle"); _trigger_writeback("incompressible")
+    log.info("Compacting zsmalloc pool on %s …", CFG.zram_dev)
+    _trigger_compact()
+    if CFG.metrics_path: _flush_metrics()
+
 def _worker() -> None:
     limiter = TokenBucket()
     while not _stop_event.is_set():
         try: _event_queue.get(timeout=1.0)
         except queue.Empty: continue
         if _stop_event.is_set(): break
-
-        if not limiter.consume():
-            _bump("writebacks_skipped_rate"); log.info("Rate-limited: skipping writeback.")
-            if CFG.metrics_path: _flush_metrics()
-            continue
-
-        with METRICS_LOCK: METRICS.last_cycle_pages_written = 0
-        log.info("Marking pages idle (age >= %s) on %s …", f"{int(CFG.idle_age_sec)}s" if _idle_by_age else "all", CFG.zram_dev)
-        if not _mark_idle():
-            _bump("writebacks_failed")
-            if CFG.metrics_path: _flush_metrics()
-            continue
-
-        log.info("Waiting %.1f s for pages to settle …", CFG.idle_mark_sec)
-        if _stop_event.wait(CFG.idle_mark_sec):
-            log.info("Shutdown requested mid-settle; aborting this writeback cycle."); break
-
-        log.info("Attempting huge_idle+huge recompression before writeback on %s …", CFG.zram_dev)
-        _trigger_recompress("huge_idle"); _trigger_recompress("huge")
-
-        log.info("Triggering huge_idle+idle writeback on %s …", CFG.zram_dev)
-        _trigger_writeback("huge_idle"); _trigger_writeback("idle")
-
-        log.info("Compacting zsmalloc pool on %s …", CFG.zram_dev)
-        _trigger_compact()
-
-        if CFG.metrics_path: _flush_metrics()
+        try: _run_cycle(limiter)
+        except Exception: log.exception("Unhandled exception mid-cycle on %s; worker stays alive.", CFG.zram_dev); _bump("errors")
     log.info("Worker thread exiting.")
 
 def _flush_metrics() -> None:
