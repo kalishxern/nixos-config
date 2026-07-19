@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-import logging, os, queue, select, signal, sys, threading, time
+import errno, logging, os, queue, select, signal, sys, threading, time
 from dataclasses import dataclass, field
 from typing import Optional
 
 @dataclass
 class Config:
-    psi_path: str = "/proc/pressure/memory"; psi_trigger: str = "some 150000 1000000"
+    psi_path: str = "/proc/pressure/memory"; psi_trigger: str = "some 200000 1000000"
     zram_dev: str = "zram0"; idle_mark_sec: float = 2.0; wb_interval_sec: float = 30.0; idle_age_sec: float = 60.0
     wb_burst: int = 1; poll_timeout_ms: int = 5000; metrics_path: Optional[str] = None; log_level: str = "INFO"; hot_reload_path: Optional[str] = None
-    recomp_enable: bool = True; recomp_algo: str = "zstd"; recomp_max_pages: int = 4096; wb_limit_mb: int = 2048
+    recomp_enable: bool = True; recomp_algo: str = "zstd"; recomp_max_pages: int = 16384; wb_limit_mb: int = 2048
     @property
     def zram_sysfs(self) -> str: return f"/sys/block/{self.zram_dev}"
     @property
@@ -59,7 +59,7 @@ class Metrics:
                 "# HELP zram_wb_failures Total writeback failures", "# TYPE zram_wb_failures counter", f"zram_wb_failures {self.writebacks_failed}", "",
                 "# HELP zram_wb_errors_total Non-writeback errors (e.g. sysfs I/O)", "# TYPE zram_wb_errors_total counter", f"zram_wb_errors_total {self.errors}", "",
                 "# HELP zram_wb_last_writeback_timestamp_seconds Unix epoch timestamp of last writeback", "# TYPE zram_wb_last_writeback_timestamp_seconds gauge", f"zram_wb_last_writeback_timestamp_seconds {self.last_writeback_ts:.1f}", "",
-                "# HELP zram_wb_last_cycle_pages_written 4K pages moved by the most recent writeback call", "# TYPE zram_wb_last_cycle_pages_written gauge", f"zram_wb_last_cycle_pages_written {self.last_cycle_pages_written}", "",
+                "# HELP zram_wb_last_cycle_pages_written 4K pages moved by the most recent writeback cycle (both calls combined)", "# TYPE zram_wb_last_cycle_pages_written gauge", f"zram_wb_last_cycle_pages_written {self.last_cycle_pages_written}", "",
                 "# HELP zram_wb_max_cycle_pages_written Largest single-call page count observed since start", "# TYPE zram_wb_max_cycle_pages_written gauge", f"zram_wb_max_cycle_pages_written {self.max_cycle_pages_written}", "",
                 "# HELP zram_wb_cumulative_pages_written Total 4K pages moved across all writeback calls since start", "# TYPE zram_wb_cumulative_pages_written counter", f"zram_wb_cumulative_pages_written {self.cumulative_pages_written}", "",
                 "# HELP zram_wb_recompress_total Total recompress attempts", "# TYPE zram_wb_recompress_total counter", f"zram_wb_recompress_total {self.recompress_triggered}", "",
@@ -93,15 +93,16 @@ class TokenBucket:
             return False
 
 def write_sysfs(path: str, val: str) -> bool:
+    global _last_errno
     try:
         with open(path, "w") as fh: fh.write(val)
-        return True
+        _last_errno = 0; return True
     except OSError as exc:
-        log.error("write_sysfs(%r, %r): %s", path, val, exc); _bump("errors"); return False
+        _last_errno = exc.errno or -1; log.error("write_sysfs(%r, %r): %s", path, val, exc); _bump("errors"); return False
 
 def _bd_writes() -> int:
     try:
-        with open(f"{CFG.zram_sysfs}/bd_stat") as fh: return int(fh.read().split()[2])
+        with open(f"{CFG.zram_sysfs}/bd_stat") as fh: return int(fh.read().split()[5]) // 8
     except (OSError, IndexError, ValueError) as exc:
         log.error("_bd_writes(): could not read bd_stat: %s", exc); return -1
 
@@ -128,6 +129,7 @@ _stop_event = threading.Event()
 _idle_by_age = True
 _wb_keyval = True
 _recomp_available = True
+_last_errno = 0
 
 def _mark_idle() -> bool:
     global _idle_by_age
@@ -155,7 +157,10 @@ def _trigger_recompress(type_: str) -> bool:
     before = _compr_size()
     val = f"type={type_} priority=1 max_pages={CFG.recomp_max_pages}" if CFG.recomp_max_pages > 0 else f"type={type_} priority=1"
     if not write_sysfs(CFG.recomp_file, val):
-        _recomp_available = False; _bump("recompress_failed"); log.warning("recompress rejected on %s; disabling recompression for this run.", CFG.zram_dev); return False
+        _bump("recompress_failed")
+        if _last_errno in (errno.EAGAIN, errno.ENOMEM): log.warning("recompress busy on %s (errno %s); retrying next cycle.", CFG.zram_dev, _last_errno)
+        else: _recomp_available = False; log.warning("recompress rejected on %s; disabling recompression for this run.", CFG.zram_dev)
+        return False
     _bump("recompress_triggered")
     after = _compr_size()
     saved = (before - after) if (before >= 0 and after >= 0) else -1
@@ -169,7 +174,7 @@ def _trigger_writeback(wb_type: str) -> bool:
     before = _bd_writes()
     val = f"type={wb_type}" if _wb_keyval else wb_type
     ok = write_sysfs(CFG.wb_file, val)
-    if not ok and _wb_keyval:
+    if not ok and _wb_keyval and _last_errno not in (errno.EAGAIN, errno.ENOMEM):
         _wb_keyval = False; log.warning("key=value writeback syntax rejected by kernel; falling back to legacy bare-word form.")
         ok = write_sysfs(CFG.wb_file, wb_type)
     if not ok:
@@ -180,7 +185,7 @@ def _trigger_writeback(wb_type: str) -> bool:
     with METRICS_LOCK:
         METRICS.last_writeback_ts = time.time()
         if moved >= 0:
-            METRICS.last_cycle_pages_written = moved; METRICS.cumulative_pages_written += moved
+            METRICS.last_cycle_pages_written += moved; METRICS.cumulative_pages_written += moved
             METRICS.max_cycle_pages_written = max(METRICS.max_cycle_pages_written, moved)
     log.info("%s writeback moved %s pages (%s KB) on %s", wb_type, moved if moved >= 0 else "?", moved * 4 if moved >= 0 else "?", CFG.zram_dev)
     return True
@@ -208,6 +213,7 @@ def _worker() -> None:
             if CFG.metrics_path: _flush_metrics()
             continue
 
+        with METRICS_LOCK: METRICS.last_cycle_pages_written = 0
         log.info("Marking pages idle (age >= %s) on %s …", f"{int(CFG.idle_age_sec)}s" if _idle_by_age else "all", CFG.zram_dev)
         if not _mark_idle():
             _bump("writebacks_failed")
@@ -218,11 +224,11 @@ def _worker() -> None:
         if _stop_event.wait(CFG.idle_mark_sec):
             log.info("Shutdown requested mid-settle; aborting this writeback cycle."); break
 
-        log.info("Attempting huge+idle recompression before writeback on %s …", CFG.zram_dev)
-        _trigger_recompress("huge_idle")
+        log.info("Attempting huge_idle+huge recompression before writeback on %s …", CFG.zram_dev)
+        _trigger_recompress("huge_idle"); _trigger_recompress("huge")
 
-        log.info("Triggering idle+huge_idle writeback on %s …", CFG.zram_dev)
-        _trigger_writeback("idle"); _trigger_writeback("huge_idle")
+        log.info("Triggering huge_idle+idle writeback on %s …", CFG.zram_dev)
+        _trigger_writeback("huge_idle"); _trigger_writeback("idle")
 
         log.info("Compacting zsmalloc pool on %s …", CFG.zram_dev)
         _trigger_compact()
