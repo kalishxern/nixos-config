@@ -151,12 +151,12 @@ def _register_recomp_algo() -> None:
     else:
         _recomp_available = False; log.warning("%s not active in recomp_algorithm on %s (got: %r); register it in zram-custom.service before disksize is set, not from this daemon.", CFG.recomp_algo, CFG.zram_dev, listed.strip())
 
-def _trigger_recompress(type_: str) -> bool:
+def _trigger_recompress(type_: str, threshold: int = 0) -> bool:
     global _recomp_available
     if not (CFG.recomp_enable and _recomp_available): _bump("recompress_unavailable"); return False
     before = _compr_size()
-    val = f"type={type_} priority=1 max_pages={CFG.recomp_max_pages}" if CFG.recomp_max_pages > 0 else f"type={type_} priority=1"
-    if not write_sysfs(CFG.recomp_file, val):
+    thr = f"threshold={threshold} " if threshold > 0 else ""
+    val = f"type={type_} {thr}priority=1 max_pages={CFG.recomp_max_pages}" if CFG.recomp_max_pages > 0 else f"type={type_} {thr}priority=1"    if not write_sysfs(CFG.recomp_file, val):
         _bump("recompress_failed")
         if _last_errno in (errno.EAGAIN, errno.ENOMEM): log.warning("recompress busy on %s (errno %s); retrying next cycle.", CFG.zram_dev, _last_errno)
         else: _recomp_available = False; log.warning("recompress rejected on %s; disabling recompression for this run.", CFG.zram_dev)
@@ -227,8 +227,8 @@ def _run_cycle(limiter: "TokenBucket") -> None:
         return
     log.info("Waiting %.1f s for pages to settle …", CFG.idle_mark_sec)
     if _stop_event.wait(CFG.idle_mark_sec): log.info("Shutdown requested mid-settle; aborting this writeback cycle."); return
-    log.info("Attempting huge_idle+huge recompression before writeback on %s …", CFG.zram_dev)
-    _trigger_recompress("huge_idle"); _trigger_recompress("huge")
+    log.info("Attempting idle+huge_idle+huge recompression before writeback on %s …", CFG.zram_dev)
+    _trigger_recompress("idle", 2300); _trigger_recompress("huge_idle"); _trigger_recompress("huge")
     log.info("Triggering huge_idle+idle+incompressible writeback on %s …", CFG.zram_dev)
     _trigger_writeback("huge_idle"); _trigger_writeback("idle"); _trigger_writeback("incompressible")
     log.info("Compacting zsmalloc pool on %s …", CFG.zram_dev)
