@@ -34,7 +34,7 @@ jobs:
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Create missing /lib32
-        run: sudo mkdir -p /lib32
+        run: sudo rm -f /lib32 && sudo mkdir -p /lib32
 
       - uses: actions/checkout@main
         with:
