@@ -156,7 +156,8 @@ def _trigger_recompress(type_: str, threshold: int = 0) -> bool:
     if not (CFG.recomp_enable and _recomp_available): _bump("recompress_unavailable"); return False
     before = _compr_size()
     thr = f"threshold={threshold} " if threshold > 0 else ""
-    val = f"type={type_} {thr}priority=1 max_pages={CFG.recomp_max_pages}" if CFG.recomp_max_pages > 0 else f"type={type_} {thr}priority=1"    if not write_sysfs(CFG.recomp_file, val):
+    val = f"type={type_} {thr}priority=1 max_pages={CFG.recomp_max_pages}" if CFG.recomp_max_pages > 0 else f"type={type_} {thr}priority=1"
+    if not write_sysfs(CFG.recomp_file, val):
         _bump("recompress_failed")
         if _last_errno in (errno.EAGAIN, errno.ENOMEM): log.warning("recompress busy on %s (errno %s); retrying next cycle.", CFG.zram_dev, _last_errno)
         else: _recomp_available = False; log.warning("recompress rejected on %s; disabling recompression for this run.", CFG.zram_dev)
