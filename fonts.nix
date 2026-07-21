@@ -1,0 +1,1 @@
+{config,pkgs,lib,inputs,modulesPath,pkgs-master,pkgs-lw,chaotic,...}:let cp=import ./packages-custom.nix{inherit config pkgs lib inputs modulesPath pkgs-master pkgs-lw chaotic;};inherit (cp) appleEmoji;in{fonts={packages=with pkgs;[appleEmoji lexend font-awesome fira fira-code nerd-fonts.fira-code];fontconfig.defaultFonts={emoji=["Apple Color Emoji"];sansSerif=["Lexend"];};};}
