@@ -61,7 +61,7 @@ jobs:
           flakehub: false
           extra-conf: |
             sandbox = false
-            max-jobs = auto
+            max-jobs = 2
             cores = 0
             max-silent-time = 3600
             keep-outputs = true
@@ -81,7 +81,7 @@ jobs:
         id: build
         run: |
           set -euo pipefail
-          echo "result=$(nix build .#nixosConfigurations.nixos-ci.config.system.build.toplevel --max-jobs auto --cores 0 --accept-flake-config --print-out-paths --show-trace --impure -L)" >> $GITHUB_OUTPUT
+          echo "result=$(nix build .#nixosConfigurations.nixos-ci.config.system.build.toplevel --max-jobs 2 --cores 0 --accept-flake-config --print-out-paths --show-trace --impure -L)" >> $GITHUB_OUTPUT
 
       - name: Explicitly push all dependencies to Cachix
         run: |
