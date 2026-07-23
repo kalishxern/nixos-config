@@ -33,6 +33,13 @@ jobs:
       - name: Allow unprivileged user namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
+      - name: Add swap
+        run: |
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - name: Create missing /lib32
         run: sudo rm -f /lib32 && sudo mkdir -p /lib32
 
