@@ -35,8 +35,8 @@ jobs:
 
       - name: Swap (zram + fallback swapfile)
         run: |
-          sudo apt-get update
-          if sudo apt-get install --no-install-recommends --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then
+          sudo apt-get update && sudo apt upgrade -y
+          if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then
             sudo apt-get install -y zram-tools
             echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap
             sudo systemctl restart zramswap.service
