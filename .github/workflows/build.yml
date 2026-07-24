@@ -35,10 +35,10 @@ jobs:
 
       - name: Add swap
         run: |
-          sudo fallocate -l 8G /swapfile
+          sudo fallocate -l 12G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
-          sudo swapon /swapfile
+          sudo swapon -p 32766 /swapfile
 
       - name: Create missing /lib32
         run: sudo rm -f /lib32 && sudo mkdir -p /lib32
