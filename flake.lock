@@ -16,6 +16,23 @@
         "type": "github"
       }
     },
+    "aodhclient-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781629348,
+        "narHash": "sha256-5BLnoxK3lj/vb+CxkMsYB+RPKd5LOM5n/cAQmg+8+Xc=",
+        "ref": "master",
+        "rev": "c145641cef802807ff337bd54b4e3f4450390c41",
+        "revCount": 481,
+        "type": "git",
+        "url": "https://opendev.org/openstack/python-aodhclient.git"
+      },
+      "original": {
+        "ref": "master",
+        "type": "git",
+        "url": "https://opendev.org/openstack/python-aodhclient.git"
+      }
+    },
     "ayugram-desktop": {
       "inputs": {
         "nixpkgs": "nixpkgs",
@@ -74,11 +91,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1784815957,
-        "narHash": "sha256-U5QvwtrF5ja/xT8CR5lUjma6TcWUdhFfVakE6MgCZog=",
+        "lastModified": 1784878151,
+        "narHash": "sha256-LrQAuO/DFFka3k9OBvtlBYLNucRPCwTcga7Mr94sup8=",
         "owner": "chaotic-cx",
         "repo": "nyx",
-        "rev": "2da62e679146cca0090a2321a6106402c05388a9",
+        "rev": "c9fbc88dcd478668f29a8fdcc77975014f80ecbc",
         "type": "github"
       },
       "original": {
@@ -261,11 +278,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784789275,
-        "narHash": "sha256-cgRTWuG+u1tBPhm01JrId2k0Bni09phVJ1Q0BZlRd7M=",
+        "lastModified": 1784877405,
+        "narHash": "sha256-W649GocILahx7Vb/JMx834217+OLKBrq014VmC/8+NM=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "3b0e6bbd65869af1beadf5963a99befc179d209f",
+        "rev": "32de400b6ac9f43042bca706f4a64f6ad08117e8",
         "type": "github"
       },
       "original": {
@@ -393,11 +410,11 @@
     },
     "nixpkgs-master": {
       "locked": {
-        "lastModified": 1784860519,
-        "narHash": "sha256-M4L7LifG80kBKbR1XybfIw4W8DTFVQzRQhOJzp0Gajo=",
+        "lastModified": 1784891552,
+        "narHash": "sha256-AXU9k2XpMLpk6U6WDJ/jJOOLKprGR6IRSV0aKca2k+Y=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "4cb9d58ac0cc213f49060285317843be7d01a182",
+        "rev": "b6afca8e77a2178b5f8593737b2e8eb52bb55420",
         "type": "github"
       },
       "original": {
@@ -529,11 +546,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784865985,
-        "narHash": "sha256-gx0+2TVge9lS892GebmeHIL6I56pZ2rVt9tEnm9yb8Y=",
+        "lastModified": 1784891254,
+        "narHash": "sha256-sJXvYbTMWhR1ecfZINhs5lKQZ16ogMllmykZy3mphrY=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "5992f937b0518f203792d906749ce7c6d76eeb07",
+        "rev": "f04383861f287d7b5606eee8ea81b7e188a799fd",
         "type": "github"
       },
       "original": {
@@ -568,6 +585,7 @@
     "root": {
       "inputs": {
         "aml-linux-usb-burn": "aml-linux-usb-burn",
+        "aodhclient-src": "aodhclient-src",
         "ayugram-desktop": "ayugram-desktop",
         "chaotic": "chaotic",
         "glass": "glass",
