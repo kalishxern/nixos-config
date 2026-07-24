@@ -33,12 +33,24 @@ jobs:
       - name: Allow unprivileged user namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
-      - name: Add swap
+      - name: Swap (zram + fallback swapfile)
         run: |
+          sudo apt-get update
+          if sudo apt-get install --no-install-recommends --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then
+            sudo apt-get install -y zram-tools
+            echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap
+            sudo systemctl restart zramswap.service
+          else
+            echo "zram module unavailable this run, skipping"
+          fi
+
           sudo fallocate -l 12G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
-          sudo swapon -p 32766 /swapfile
+          sudo swapon -p 10 /swapfile
+
+          swapon --show
+          free -h
 
       - name: Create missing /lib32
         run: sudo rm -f /lib32 && sudo mkdir -p /lib32
