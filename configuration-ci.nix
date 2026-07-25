@@ -1,1 +1,0 @@
-{config,pkgs,lib,inputs,modulesPath,pkgs-master,pkgs-lw,chaotic,...}:{imports=[./hardware-configuration.nix inputs.home-manager.nixosModules.home-manager ./modules/zram-writeback.nix ./boot.nix ./networking.nix ./security.nix ./nix-settings.nix ./systemd.nix ./services.nix ./environment.nix ./fonts.nix ./programs.nix ./users.nix ./sops.nix ./system-misc.nix ./home-manager.nix];}

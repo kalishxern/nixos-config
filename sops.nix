@@ -1,1 +1,1 @@
-{config,pkgs,lib,inputs,modulesPath,pkgs-master,pkgs-lw,chaotic,...}:{sops={defaultSopsFile=./secrets.yaml;age.sshKeyPaths=["/etc/ssh/ssh_host_ed25519_key"];secrets={github-pat={mode="0444";};aria2-secret={owner="yuda";};};};}
+{flake.modules.nixos.sops={config,pkgs,lib,inputs,modulesPath,pkgs-master,pkgs-lw,chaotic,...}:{sops={defaultSopsFile=./secrets.yaml;age.sshKeyPaths=["/etc/ssh/ssh_host_ed25519_key"];secrets={github-pat={mode="0444";};aria2-secret={owner="yuda";};};};};}
