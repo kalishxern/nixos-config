@@ -343,6 +343,22 @@
         "type": "github"
       }
     },
+    "linux-firmware-latest": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784985407,
+        "narHash": "sha256-YrmqsIYHdPUkC9IOtFJQaWMeRwVoWlXY+xymAOqE9y0=",
+        "owner": "kernel-firmware",
+        "repo": "linux-firmware",
+        "rev": "d92478c78e4d808ead68434ba71fdb28dc38f6d7",
+        "type": "gitlab"
+      },
+      "original": {
+        "owner": "kernel-firmware",
+        "repo": "linux-firmware",
+        "type": "gitlab"
+      }
+    },
     "nix-cachyos-kernel": {
       "inputs": {
         "cachyos-kernel": "cachyos-kernel",
@@ -615,6 +631,7 @@
         "home-manager": "home-manager_2",
         "kde-rounded-corners": "kde-rounded-corners",
         "kwin-effects-glass": "kwin-effects-glass",
+        "linux-firmware-latest": "linux-firmware-latest",
         "nix-cachyos-kernel": "nix-cachyos-kernel",
         "nixpkgs": "nixpkgs_4",
         "nixpkgs-lw": "nixpkgs-lw",
