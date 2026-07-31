@@ -216,7 +216,7 @@ def _maybe_rearm_wb_budget() -> None:
 
 def _run_cycle(limiter: "TokenBucket") -> None:
     if not limiter.consume():
-        _bump("writebacks_skipped_rate"); log.info("Rate-limited: skipping writeback.")
+        _bump("writebacks_skipped_rate"); log.debug("Rate-limited: skipping writeback.")
         if CFG.metrics_path: _flush_metrics()
         return
     _maybe_rearm_wb_budget()
@@ -244,6 +244,9 @@ def _worker() -> None:
         if _stop_event.is_set(): break
         try: _run_cycle(limiter)
         except Exception: log.exception("Unhandled exception mid-cycle on %s; worker stays alive.", CFG.zram_dev); _bump("errors")
+        while not _event_queue.empty():
+            try: _event_queue.get_nowait()
+            except queue.Empty: break
     log.info("Worker thread exiting.")
 
 def _flush_metrics() -> None:
