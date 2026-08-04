@@ -73,6 +73,22 @@
         "type": "github"
       }
     },
+    "faugus-launcher": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785864070,
+        "narHash": "sha256-Y4wST6lTtQd7t5mD4QIuscjBp8DIRH1fQZ55nyJmP4U=",
+        "owner": "Faugus",
+        "repo": "faugus-launcher",
+        "rev": "b4acfd355ccbfe9fca2a476cd6768f54af4fab70",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Faugus",
+        "repo": "faugus-launcher",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -590,6 +606,7 @@
         "aodhclient-src": "aodhclient-src",
         "ayugram-desktop": "ayugram-desktop",
         "chaotic": "chaotic",
+        "faugus-launcher": "faugus-launcher",
         "flake-parts": "flake-parts",
         "glass": "glass",
         "grub2-themes": "grub2-themes",
