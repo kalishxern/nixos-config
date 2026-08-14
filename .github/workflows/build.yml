@@ -44,7 +44,7 @@ jobs:
             echo "zram module unavailable this run, skipping"
           fi
 
-          sudo fallocate -l 8G /swapfile
+          sudo fallocate -l 4G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon -p 16383 /swapfile
@@ -100,7 +100,7 @@ jobs:
         id: build
         run: |
           set -euo pipefail
-          echo "result=$(nix build .#nixosConfigurations.nixos-ci.config.system.build.toplevel --max-jobs 1 --cores 0 --accept-flake-config --print-out-paths --show-trace --impure -L)" >> $GITHUB_OUTPUT
+          echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --max-jobs 1 --cores 0 --accept-flake-config --print-out-paths --show-trace --impure -L)" >> $GITHUB_OUTPUT
 
       - name: Explicitly push all dependencies to Cachix
         run: |
