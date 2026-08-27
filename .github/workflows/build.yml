@@ -79,7 +79,6 @@ jobs:
         with:
           flakehub: false
           extra-conf: |
-            extra-system-features = gccarch-bdver3
             sandbox = false
             max-jobs = auto
             cores = 0
