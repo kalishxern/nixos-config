@@ -561,6 +561,22 @@
         "type": "github"
       }
     },
+    "oh-my-posh-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789344435,
+        "narHash": "sha256-ICmItqzUWrbDOJ3GbU4B2z8lhwmDVKUAYQFW0gR0vzo=",
+        "owner": "JanDeDobbeleer",
+        "repo": "oh-my-posh",
+        "rev": "71a6fa7cb6cfe94fa4abfdc3e2d79150c95ca920",
+        "type": "github"
+      },
+      "original": {
+        "owner": "JanDeDobbeleer",
+        "repo": "oh-my-posh",
+        "type": "github"
+      }
+    },
     "plasma-manager": {
       "inputs": {
         "home-manager": [
@@ -605,6 +621,7 @@
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nullclaw": "nullclaw",
         "nur": "nur",
+        "oh-my-posh-src": "oh-my-posh-src",
         "plasma-manager": "plasma-manager",
         "sops-nix": "sops-nix",
         "yamis-icons": "yamis-icons"
