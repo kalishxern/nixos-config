@@ -314,11 +314,11 @@
     "linux-firmware-latest": {
       "flake": false,
       "locked": {
-        "lastModified": 1790019943,
-        "narHash": "sha256-05yPpgs/xJYSa0LhOkRPeirmGZkka6HjDWMayz1pRaA=",
+        "lastModified": 1790175175,
+        "narHash": "sha256-EIUxHEx+bLz59OyWNr6ufzI4kuTwgqMbkHlOpb/vglU=",
         "owner": "kernel-firmware",
         "repo": "linux-firmware",
-        "rev": "797d34e622b2262ca0777e98fd40b1d29034169d",
+        "rev": "eb37893c0eba887601953355d1f7f2acb3ca8a6a",
         "type": "gitlab"
       },
       "original": {
@@ -412,11 +412,11 @@
     },
     "nixpkgs-master": {
       "locked": {
-        "lastModified": 1790168759,
-        "narHash": "sha256-g7ONZPGOL4HRgKt8a/y6H/OR3d099/hXYA0w8Rh/miA=",
+        "lastModified": 1790180613,
+        "narHash": "sha256-aw97up/f4ODrrPK0hUUjVnxhzZTH8MnUaixdTaUyo0Q=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "88396330d038649f366489d8535b93146af990b9",
+        "rev": "6a6c078bb72bd6434606520607f9ed8a60cb77bf",
         "type": "github"
       },
       "original": {
@@ -473,11 +473,11 @@
     },
     "nixpkgs_4": {
       "locked": {
-        "lastModified": 1790055231,
-        "narHash": "sha256-wQZif6Lyrg1IDl8k68Gwa3OK9PermeRsjdKgso4K1VA=",
-        "rev": "b6c98e9e6633ee64753b594ff4a5febf0367fc00",
+        "lastModified": 1790149054,
+        "narHash": "sha256-fcRceL4EcNlsCY2GWwzfIVrJyjbA2lpQSuljkc8UXOw=",
+        "rev": "8825bebf6324e0579d012936eff73379af284b6d",
         "type": "tarball",
-        "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.11pre1078010.b6c98e9e6633/nixexprs.tar.zst"
+        "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.11pre1078395.8825bebf6324/nixexprs.tar.zst"
       },
       "original": {
         "type": "tarball",
@@ -542,11 +542,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790168704,
-        "narHash": "sha256-/WpvYyp/chWoIq1+iMenGKlh0eKkaIDVUbdT6/1EiWw=",
+        "lastModified": 1790179863,
+        "narHash": "sha256-6OLUYGUWI7UpYZ3eeIJsMaI1Ic0wgczRQYrm9tTcKx4=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "c2f956721617c88e13507b677b922b7d7c9b772d",
+        "rev": "b00be7374d16469074a10f15c1db9089550e4a1a",
         "type": "github"
       },
       "original": {
