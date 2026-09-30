@@ -232,11 +232,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790742230,
-        "narHash": "sha256-5399J1/O3DyLSsYGVa950JtOUDB9Reqvy7FhfDuTVzk=",
+        "lastModified": 1790775610,
+        "narHash": "sha256-vIexOe2vzi+l0TStoe2EiSTN3C/3gI3+P6Y5vcabui8=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "0aefa652eb6fd8b7396af25e8c81cb0790f12cc2",
+        "rev": "bf3f7a120d14e1bc51f4e1c3739fa6f3a98e9233",
         "type": "github"
       },
       "original": {
@@ -280,17 +280,33 @@
     "linux-firmware-latest": {
       "flake": false,
       "locked": {
-        "lastModified": 1790690303,
-        "narHash": "sha256-wDMOQnIJ9x35GGlNXiUxRQII9QUdB3Uo6SgvnFaQGmA=",
+        "lastModified": 1790776153,
+        "narHash": "sha256-Bp96FQ+0cHzPVzrdrK6GGfGRf7tTrNIqIOY5hw4Rd+c=",
         "owner": "kernel-firmware",
         "repo": "linux-firmware",
-        "rev": "27bac57ed81494fe6d23f8e2995dbf7d83cd110e",
+        "rev": "c251ff18ca53740a57781d3a1e331b3aaf4f31a5",
         "type": "gitlab"
       },
       "original": {
         "owner": "kernel-firmware",
         "repo": "linux-firmware",
         "type": "gitlab"
+      }
+    },
+    "nixos-staging": {
+      "locked": {
+        "lastModified": 1790770537,
+        "narHash": "sha256-rBeGjM5/jQFrSQWz/psjGuWaCC2DRmkEkgPGhhU3AlA=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "668d046b7eef0043714bdca97c987a508cd3c941",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "staging",
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "nixpkgs": {
@@ -327,11 +343,11 @@
     },
     "nixpkgs-master": {
       "locked": {
-        "lastModified": 1790758946,
-        "narHash": "sha256-htqJIhfw7hKDqsmhBJqbgizRyyko3Se7/yhxPtkn/j4=",
+        "lastModified": 1790776572,
+        "narHash": "sha256-xa0+bzhmQKgKPkdB5DOsWqsSY/DFDpMbc5q2XvYrEes=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "d9ea06d05f9255a478cc4ade04df0fe0cadb1c14",
+        "rev": "33febfda9a6c43cf9e752594cecc646368cafe15",
         "type": "github"
       },
       "original": {
@@ -343,11 +359,11 @@
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1790578696,
-        "narHash": "sha256-ZoxIApko70jCdbH3l20HWXOBaT2HZd87orzd2yJ9dVE=",
+        "lastModified": 1790689126,
+        "narHash": "sha256-ilerN1WLSvF+HMjziC/Wv99J5y02maDH+6hZPwsORKg=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f",
+        "rev": "b4fd65b198c599cbe814fcb9f42d25d021595ec9",
         "type": "github"
       },
       "original": {
@@ -372,11 +388,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1790600678,
-        "narHash": "sha256-k0ouG9zZIYS9D2B6yADfOoMbcUDSBrFg+tfHuUgbHDU=",
-        "rev": "f45c6f04c2f013f004bf94e284e95d72898d9393",
+        "lastModified": 1790652569,
+        "narHash": "sha256-k8Fu4c9Z+4Nh7mUr0cfw++ITQiyEhlWxoJBOkI3tOcQ=",
+        "rev": "b6c8664de9b6cc07fe5666a29f91884ba81197c4",
         "type": "tarball",
-        "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.11pre1081052.f45c6f04c2f0/nixexprs.tar.zst"
+        "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.11pre1082290.b6c8664de9b6/nixexprs.tar.zst"
       },
       "original": {
         "type": "tarball",
@@ -441,11 +457,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790758562,
-        "narHash": "sha256-jEB1+KzRIoPOCzA6jMqPnXVxaqtN3yG6xfeaVcaeEa4=",
+        "lastModified": 1790775966,
+        "narHash": "sha256-PHL7y3i9yY1sQ8EYG99uIlg3eKJjocz2pJgPE6igGR4=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "7566264cd9786a1f7061481a188ff717895edc3c",
+        "rev": "399d378d910c700ef3d2ceba94ac4129a2720d1d",
         "type": "github"
       },
       "original": {
@@ -507,6 +523,7 @@
         "kde-rounded-corners": "kde-rounded-corners",
         "kwin-effects-glass": "kwin-effects-glass",
         "linux-firmware-latest": "linux-firmware-latest",
+        "nixos-staging": "nixos-staging",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-master": "nixpkgs-master",
         "nixpkgs-unstable": "nixpkgs-unstable",
