@@ -19,11 +19,11 @@
     "aodhclient-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1790041499,
-        "narHash": "sha256-4oDt26ghyIxVyncubOlIsHzek5PQoR7sTqrksZju3Gc=",
+        "lastModified": 1790351291,
+        "narHash": "sha256-6pe3PZpkNIOSlM2iWOAyZ2YnrRwQ/iXgAoi9zuVC01I=",
         "ref": "master",
-        "rev": "9fee389885d102108bcfa4d4ee2fa59e4fa82dec",
-        "revCount": 499,
+        "rev": "1f09066319c3fffa680f95745af62c1036c92f7d",
+        "revCount": 500,
         "type": "git",
         "url": "https://opendev.org/openstack/python-aodhclient.git"
       },
@@ -59,11 +59,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1790610543,
-        "narHash": "sha256-OIbWe7rANBR3nscjPOqPOn4QlPNJhqqkhB35ZiLa7rU=",
+        "lastModified": 1790670980,
+        "narHash": "sha256-sJBXp4sPVnI960+iZrvKekGglOjgWJz0y+IZOgetuuY=",
         "owner": "chaotic-cx",
         "repo": "nyx",
-        "rev": "ff3c71b06466357121cdc00ebd71a6b7085dc77e",
+        "rev": "9e2ba4b2e416c8262eec1bcb8348eef741019b9c",
         "type": "github"
       },
       "original": {
@@ -232,11 +232,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790365885,
-        "narHash": "sha256-iQ0ebhiVo64NktTnwft9hNxlFu4j5cvljVxyJaEVIP4=",
+        "lastModified": 1790742230,
+        "narHash": "sha256-5399J1/O3DyLSsYGVa950JtOUDB9Reqvy7FhfDuTVzk=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "7b4c5ec4bedaf1e062bbc1bcaeddbc6bd242aa1b",
+        "rev": "0aefa652eb6fd8b7396af25e8c81cb0790f12cc2",
         "type": "github"
       },
       "original": {
@@ -264,11 +264,11 @@
     "kwin-effects-glass": {
       "flake": false,
       "locked": {
-        "lastModified": 1790595664,
-        "narHash": "sha256-AmOUn3X22lpXOD+TMLLVcVoL0/1GwUcx6VhMkcsIWLE=",
+        "lastModified": 1790734645,
+        "narHash": "sha256-QMIscGqrEv8X5JbOkHk2SZw+OuyQOFdFzYYsiYgs1MI=",
         "owner": "4v3ngR",
         "repo": "kwin-effects-glass",
-        "rev": "16e9a91b28b26c9547e8198056cc5d6a5fceaf8a",
+        "rev": "32f1e79f517eef992563856aa06963f6ee8455b9",
         "type": "github"
       },
       "original": {
@@ -280,11 +280,11 @@
     "linux-firmware-latest": {
       "flake": false,
       "locked": {
-        "lastModified": 1790656230,
-        "narHash": "sha256-un/Qu+AYlGKfvBLEVvfcrrpXqRPoxltflk8nqmm0FYk=",
+        "lastModified": 1790690303,
+        "narHash": "sha256-wDMOQnIJ9x35GGlNXiUxRQII9QUdB3Uo6SgvnFaQGmA=",
         "owner": "kernel-firmware",
         "repo": "linux-firmware",
-        "rev": "58a9869598b606fc2e5531298932b8757292f9a0",
+        "rev": "27bac57ed81494fe6d23f8e2995dbf7d83cd110e",
         "type": "gitlab"
       },
       "original": {
@@ -327,11 +327,11 @@
     },
     "nixpkgs-master": {
       "locked": {
-        "lastModified": 1790665384,
-        "narHash": "sha256-9Yb/EZV6XYJdBsiRV3fUmBUS390IZJVMpxnxJqhStt0=",
+        "lastModified": 1790748569,
+        "narHash": "sha256-1nV0P//PhuHduQTJR5e00iU10fbXFCo9HBxsjF+IfFg=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "0a59a4df5fb1b3ff45c63d7d9d308686e85cda55",
+        "rev": "5368937fa890390c4db533b8af5e48583cab0c43",
         "type": "github"
       },
       "original": {
@@ -372,11 +372,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1790570722,
-        "narHash": "sha256-XfhTbc76cWAtJ9fmly6V04gaAQxjY+O445z80Ol6Pu4=",
-        "rev": "419fe0f449b3fbe3bdd53d9840288db4509ec32e",
+        "lastModified": 1790600678,
+        "narHash": "sha256-k0ouG9zZIYS9D2B6yADfOoMbcUDSBrFg+tfHuUgbHDU=",
+        "rev": "f45c6f04c2f013f004bf94e284e95d72898d9393",
         "type": "tarball",
-        "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.11pre1080803.419fe0f449b3/nixexprs.tar.zst"
+        "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.11pre1081052.f45c6f04c2f0/nixexprs.tar.zst"
       },
       "original": {
         "type": "tarball",
@@ -441,11 +441,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790664915,
-        "narHash": "sha256-MTs7itupIPCg0f6wxg7xnl3LfQ4ne0sm4IKwDF9b+RQ=",
+        "lastModified": 1790748134,
+        "narHash": "sha256-8PGoyZ5fIST5HOihh1SO3i0RVGKkA0LybDXqq483SBM=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "0fcb74316e25b8ccc414d9c12197df33a56b0c3e",
+        "rev": "9c04ffcfadae1d500a75644d2ff16dbc912efe69",
         "type": "github"
       },
       "original": {
