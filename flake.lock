@@ -612,8 +612,30 @@
         "nur": "nur",
         "oh-my-posh-src": "oh-my-posh-src",
         "plasma-manager": "plasma-manager",
+        "rust-overlay": "rust-overlay",
         "sops-nix": "sops-nix",
-        "yamis-icons": "yamis-icons"
+        "yamis-icons": "yamis-icons",
+        "zapfast": "zapfast"
+      }
+    },
+    "rust-overlay": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793348683,
+        "narHash": "sha256-qv+P8z2xS5Xdws5Kigvr/WKJiaJSa6Ke8iH7ozmO53w=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "96a0986b0486341fbc163fa2fabc6d3b44cdcbf1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
       }
     },
     "sops-nix": {
@@ -724,6 +746,30 @@
       "original": {
         "owner": "FelixDes",
         "repo": "YAMIS-enlarged",
+        "type": "github"
+      }
+    },
+    "zapfast": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792830602,
+        "narHash": "sha256-kkj9oikkNAxMlLC4zMJNPUqB/HQ47h+mmhowOBJoD1E=",
+        "owner": "crmne",
+        "repo": "zapfast",
+        "rev": "b0d54b6dd261fdb3c66630c73d328b5e45c165c8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "crmne",
+        "ref": "v0.20.1",
+        "repo": "zapfast",
         "type": "github"
       }
     }
