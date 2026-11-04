@@ -75,11 +75,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1793787253,
-        "narHash": "sha256-zR8Yi+L8ywR4FPmaypicbfCoxdkn2FVuIDcOYaxkHDE=",
+        "lastModified": 1793799470,
+        "narHash": "sha256-h0g/LjEm7ohI9i+/tN3tev63yRX1hhYaVg7WKNjHhM8=",
         "owner": "chaotic-cx",
         "repo": "nyx",
-        "rev": "140015ca4d0dc76c80ae759e98222ec008124048",
+        "rev": "abc850ab3183d4d25020b84f210a7dc7de6a7511",
         "type": "github"
       },
       "original": {
@@ -374,11 +374,11 @@
     "linux-firmware-latest": {
       "flake": false,
       "locked": {
-        "lastModified": 1793796687,
-        "narHash": "sha256-kn3y92T2OEKdEN3MAnzdAfte5GRLTOEOYpeq0hCnrgQ=",
+        "lastModified": 1793810459,
+        "narHash": "sha256-lxFsxI4EjGUBVJt/sthTw5BeWuJCM/i3zS1weZKMrW0=",
         "ref": "main",
-        "rev": "c0a3de0b834a5d9577ad06c6978cab11e67097a8",
-        "revCount": 6903,
+        "rev": "703a4d95f86606b14b8433e7197663874ef89eed",
+        "revCount": 6920,
         "type": "git",
         "url": "https://gitlab.com/kernel-firmware/linux-firmware.git"
       },
@@ -410,11 +410,11 @@
     },
     "nixos-staging": {
       "locked": {
-        "lastModified": 1793794127,
-        "narHash": "sha256-qdFQymdxuebjCmFMOc19/a+UBLuZTO3u2zUplMv4Dmg=",
+        "lastModified": 1793816264,
+        "narHash": "sha256-5N1QAME+HaF6CgdgBVyE8TqV49Y9NOyErp8RiT4/FME=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "9040a045b8219bb18ab0db35b8f1a69000340d96",
+        "rev": "bc54f165f1d0cfd728d0d548885c1822f446a253",
         "type": "github"
       },
       "original": {
@@ -473,11 +473,11 @@
     },
     "nixpkgs-master": {
       "locked": {
-        "lastModified": 1793797190,
-        "narHash": "sha256-Gncop0aFyG96Li6SbDVjdMXqGWRP/8s1yyM4eApyb9Q=",
+        "lastModified": 1793816611,
+        "narHash": "sha256-QCCGgCdBehh4JXYFEkHROwMFlkXdExV6ELkcecxj0ow=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "b1d9a62b561edeb70393d75fdcb7978f07e4ae61",
+        "rev": "defdcc796bcaa916127eb792a4adbb83016605c8",
         "type": "github"
       },
       "original": {
@@ -505,11 +505,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1793540411,
-        "narHash": "sha256-us2GRWGXbOQpN1blyJGvmdx+g4bv9GoFYq5iiOHRiZ8=",
-        "rev": "0bb2eedc20e4739f29e8045034f2828ad7054f8f",
+        "lastModified": 1793726008,
+        "narHash": "sha256-iNjybNORi/2+shilhMlkNr01UHWKOHRGzQyIyvobs9o=",
+        "rev": "1d060086d60cb76a40cf37109f979d88a5bd6396",
         "type": "tarball",
-        "url": "https://releases.nixos.org/nixos/unstable/nixos-26.11pre1106360.0bb2eedc20e4/nixexprs.tar.zst"
+        "url": "https://releases.nixos.org/nixos/unstable/nixos-26.11pre1107793.1d060086d60c/nixexprs.tar.zst"
       },
       "original": {
         "type": "tarball",
@@ -537,11 +537,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793797755,
-        "narHash": "sha256-kvOHN4xBG4Xy/93yDNIgbG2qFKdjnCi5fBq4lY/rT5Y=",
+        "lastModified": 1793815222,
+        "narHash": "sha256-3+KAP7tF4KVROPcwcxw64A31Zj9PubJUm5KyJPzoYOs=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "8ffad1621a1fb309e7f736f3aaed34096e07f577",
+        "rev": "c506274ea5b61c9a030203510d70c72f93f19df2",
         "type": "github"
       },
       "original": {
@@ -759,16 +759,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1793565530,
-        "narHash": "sha256-3S4UWz9vBus4aqpgoy9ncazI24VC94WRpD+49vI0Ay4=",
+        "lastModified": 1793727086,
+        "narHash": "sha256-nY1v8fY+4vOLFOEwHRnhY3lTlrQRLyljilLHE97/kGY=",
         "owner": "crmne",
         "repo": "zapfast",
-        "rev": "25e62578b3f750123fc4750253bce97401436260",
+        "rev": "92f5ecac34814a77042ceea5827aa8964c3d0c1d",
         "type": "github"
       },
       "original": {
         "owner": "crmne",
-        "ref": "v0.21.0",
+        "ref": "v0.21.1",
         "repo": "zapfast",
         "type": "github"
       }
