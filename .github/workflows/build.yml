@@ -104,19 +104,13 @@ jobs:
 
       - name: Build NixOS configuration
         id: build
-        run: set -euo pipefail; nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --print-out-paths --show-trace --impure -L 2>&1 >"$RUNNER_TEMP/out-paths.txt" | tee "$RUNNER_TEMP/build.log"; echo "result=$(cat "$RUNNER_TEMP/out-paths.txt")" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --print-out-paths --show-trace --impure -L 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> $GITHUB_OUTPUT
 
-      - name: Collect logs of failed derivations
-        if: failure() && steps.build.outcome == 'failure'
-        run: set +e; log="$RUNNER_TEMP/build.log"; out="$RUNNER_TEMP/failed-logs"; mkdir -p "$out"; [ -f "$log" ] || { echo "No build output file found."; exit 0; }; tail -n 3000 "$log" > "$out/build-tail.log"; found=0; while IFS= read -r drv; do name=$(basename "$drv" .drv); if nix log "$drv" > "$out/$name.log" 2>/dev/null </dev/null && [ -s "$out/$name.log" ]; then found=$((found + 1)); echo "::error title=Failed derivation::$name"; grep -nE -m 5 -B 10 -A 15 'error:|ERROR|\*\*\*.*Error [0-9]+|[Kk]illed|No space left|[Oo]ut of memory|undefined reference|Segmentation fault|FAILED|Failed to|fatal:' "$out/$name.log" > "$out/$name.errors.txt" || tail -n 60 "$out/$name.log" > "$out/$name.errors.txt"; cat "$out/$name.errors.txt"; printf '**Failed derivation:** %s\n\n%s\n%s\n%s\n' "$name" '```' "$(cat "$out/$name.errors.txt")" '```' >> "$GITHUB_STEP_SUMMARY"; else rm -f "$out/$name.log"; echo "No stored build log for $name. It probably failed because a dependency failed."; fi; done < <(grep -oP "(Cannot build '|builder for '|nix log |nix-store -l )\K/nix/store/[0-9a-z]{32}-[^' ]+\.drv" "$log" | awk '!seen[$0]++'); [ "$found" -eq 0 ] && { echo "No failed derivation log found. The failure is probably an evaluation error."; tail -n 80 "$log" > "$out/eval-error.txt"; cat "$out/eval-error.txt"; printf '%s\n%s\n%s\n' '```' "$(cat "$out/eval-error.txt")" '```' >> "$GITHUB_STEP_SUMMARY"; }; exit 0
-
-      - name: Upload logs of failed derivations
-        if: failure() && steps.build.outcome == 'failure'
-        uses: actions/upload-artifact@v7
-        with:
-          name: failed-derivation-logs
-          path: ${{ runner.temp }}/failed-logs
-          retention-days: 7
+      - name: Show logs of failed derivations
+        if: always()
+        run: grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" | sort -u | xargs -r -n1 nix log
 
       - name: Explicitly push all dependencies to Cachix
         run: |
