@@ -95,6 +95,7 @@ jobs:
             http-connections = 128
             connect-timeout = 15
             stalled-download-timeout = 15
+            log-lines = 300
 
       - uses: cachix/cachix-action@master
         with:
@@ -106,7 +107,7 @@ jobs:
         id: build
         run: |
           set -euo pipefail
-          echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --print-out-paths --show-trace --impure -L 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> $GITHUB_OUTPUT
+          echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --option log-lines 300 --print-out-paths --show-trace --impure -L 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> $GITHUB_OUTPUT
 
       - name: Show logs of failed derivations
         if: always()
