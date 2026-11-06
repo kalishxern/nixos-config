@@ -23,9 +23,6 @@ jobs:
       - name: CPU
         run: lscpu ;grep "model name" /proc/cpuinfo
 
-      - name: RAM
-        run: sudo apt-get update; if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then sudo apt-get install -y zram-tools; echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap; sudo systemctl restart zramswap.service; fi; sudo swapoff -a; sudo rm -f /swapfile ;sudo fallocate -l 4G /swapfile ;sudo chmod 600 /swapfile ;sudo mkswap /swapfile ;sudo swapon -p 16383 /swapfile ;swapon --show ;free -h
-
       - name: Free-disk-space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -36,6 +33,9 @@ jobs:
           large-packages: true
           docker-images: true
           swap-storage: true
+
+      - name: RAM
+        run: sudo apt-get update ;if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram ;then sudo apt-get install -y zram-tools ;{ echo 'ALGO=lz4' ;echo 'PERCENT=200' ;echo 'PRIORITY=32766' ;} > /tmp/zramswap ;sudo install -m 644 /tmp/zramswap /etc/default/zramswap ;sudo systemctl restart zramswap.service ;fi ;sudo swapoff -a ;sudo rm -f /swapfile ;sudo fallocate -l 4G /swapfile ;sudo chmod 600 /swapfile ;sudo mkswap /swapfile ;sudo swapon -p 16383 /swapfile ;swapon --show ;free -h
 
       - name: Allow unprivileged user namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
@@ -70,7 +70,7 @@ jobs:
 
       - name: Install nix-compact
         timeout-minutes: 90
-        run: echo "$(nix build $COMPACT_FLAKE#default.nix-cli^out --no-link --print-out-paths)/bin" >> "$GITHUB_PATH"
+        run: 'set -euo pipefail ;echo "COMPACT_FLAKE=${COMPACT_FLAKE}" ;nix --version ;COMPACT_STORE_PATH="$(nix build "${COMPACT_FLAKE}#default.nix-cli^out" --no-link --print-out-paths)" ;echo "COMPACT_STORE_PATH=${COMPACT_STORE_PATH}" ;if test -z "${COMPACT_STORE_PATH}" ;then echo "ERROR: nix build returned empty store path" ;exit 1 ;fi ;if test -d "${COMPACT_STORE_PATH}/bin" ;then ls -la "${COMPACT_STORE_PATH}/bin" ;else echo "ERROR: missing bin dir at ${COMPACT_STORE_PATH}" ;ls -la "${COMPACT_STORE_PATH}" ;exit 1 ;fi ;echo "${COMPACT_STORE_PATH}/bin" >> "$GITHUB_PATH" ;echo "GITHUB_PATH now contains:" ;cat "$GITHUB_PATH"'
 
       - name: Build NixOS
         id: build
@@ -78,11 +78,11 @@ jobs:
 
       - name: Print full build logs
         if: always()
-        run: cat ~/.local/state/nix/build-logs/*.jsonl 2>/dev/null || true
+        run: set +e ;for f in ~/.local/state/nix/build-logs/*.jsonl ;do if test -f "$f" ;then nix build-log "$f" --diagnostics ;fi ;done ;if test -f "$RUNNER_TEMP/build.log" ;then cat "$RUNNER_TEMP/build.log" ;fi ;set -e
 
       - name: Show logs of failed derivations
         if: always()
-        run: test -f "$RUNNER_TEMP/build.log" && grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" | sort -u | xargs -r -n1 nix log || true
+        run: set +e ;if test -f "$RUNNER_TEMP/build.log" ;then grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" > "$RUNNER_TEMP/drvs.txt" ;sort -u "$RUNNER_TEMP/drvs.txt" > "$RUNNER_TEMP/drvs-uniq.txt" ;while IFS= read -r d ;do nix log "$d" ;done < "$RUNNER_TEMP/drvs-uniq.txt" ;fi ;set -e
 
       - name: Upload-artifact full build logs
         if: always()
@@ -93,7 +93,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Explicitly push all dependencies to Cachix
-        run: nix path-info -r ${{ steps.build.outputs.result }} --impure 2>/dev/null | cachix push kalishxern-nixos || true
+        run: set +e ;if test -n "${{ steps.build.outputs.result }}" ;then nix path-info -r ${{ steps.build.outputs.result }} --impure 2>/dev/null > "$RUNNER_TEMP/deps.txt" ;cachix push kalishxern-nixos < "$RUNNER_TEMP/deps.txt" ;fi ;set -e
 
       - name: Save ccache
         if: always()
@@ -106,4 +106,4 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh cache list --key "ccache-${{ runner.os }}-" --limit 100 --json id,key,ref | jq -r --arg current "${{ github.run_id }}" '.[] | select(.key | contains($current) | not) | .id' | xargs -r -n1 gh cache delete
+        run: gh cache list --key "ccache-${{ runner.os }}-" --limit 100 --json id,key,ref > "$RUNNER_TEMP/caches.json" ;python3 -c 'import json,sys ;data=json.load(open(sys.argv[1])) ;cur=sys.argv[2] ;print(chr(10).join(str(c["id"]) for c in data if cur not in c["key"]))' "$RUNNER_TEMP/caches.json" "${{ github.run_id }}" > "$RUNNER_TEMP/ids.txt" ;set +e ;while IFS= read -r id ;do if test -n "$id" ;then gh cache delete "$id" ;fi ;done < "$RUNNER_TEMP/ids.txt" ;set -e
