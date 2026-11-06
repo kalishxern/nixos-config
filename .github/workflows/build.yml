@@ -78,7 +78,7 @@ jobs:
 
       - name: Print full build logs
         if: always()
-        run: set +e ;for f in ~/.local/state/nix/build-logs/*.jsonl ;do if test -f "$f" ;then nix build-log "$f" --diagnostics ;fi ;done ;if test -f "$RUNNER_TEMP/build.log" ;then cat "$RUNNER_TEMP/build.log" ;fi ;set -e
+        run: set +e ;for f in ~/.local/state/nix/build-logs/*.jsonl ;do if test -f "$f" ;then nix build-log "$f" ;fi ;done ;if test -f "$RUNNER_TEMP/build.log" ;then cat "$RUNNER_TEMP/build.log" ;fi ;set -e
 
       - name: Show logs of failed derivations
         if: always()
