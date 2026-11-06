@@ -1,4 +1,4 @@
-name: Build NixOS
+name: NixOS
 
 on:
   workflow_dispatch:
@@ -20,13 +20,13 @@ jobs:
       COMPACT_FLAKE: github:ghuntley/nix-compact/main
 
     steps:
-      - name: Show runner CPU
-        run: lscpu && grep "model name" /proc/cpuinfo
+      - name: CPU
+        run: lscpu ;grep "model name" /proc/cpuinfo
 
-      - name: Swap (zram + fallback swapfile)
-        run: sudo apt-get update && sudo apt upgrade -y; if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then sudo apt-get install -y zram-tools; echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap; sudo systemctl restart zramswap.service; fi; sudo swapoff -a; sudo rm -f /swapfile && sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon -p 16383 /swapfile && swapon --show && free -h
+      - name: RAM
+        run: sudo apt-get update; if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then sudo apt-get install -y zram-tools; echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap; sudo systemctl restart zramswap.service; fi; sudo swapoff -a; sudo rm -f /swapfile ;sudo fallocate -l 4G /swapfile ;sudo chmod 600 /swapfile ;sudo mkswap /swapfile ;sudo swapon -p 16383 /swapfile ;swapon --show ;free -h
 
-      - name: Free disk space
+      - name: Free-disk-space
         uses: jlumbroso/free-disk-space@main
         with:
           preinstalled-runtimes: true
@@ -41,14 +41,14 @@ jobs:
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Create missing /lib32
-        run: sudo rm -f /lib32 && sudo mkdir -p /lib32
+        run: sudo rm -f /lib32 ;sudo mkdir -p /lib32
 
       - uses: actions/checkout@main
         with:
           fetch-depth: 3
 
       - name: Prepare ccache dir
-        run: sudo mkdir -p /var/cache/ccache && sudo chown -R "$(id -u):$(id -g)" /var/cache/ccache && sudo chmod -R 0755 /var/cache/ccache && echo "CCACHE_DIR=/var/cache/ccache" >> $GITHUB_ENV
+        run: sudo mkdir -p /var/cache/ccache ;sudo chown -R "$(id -u):$(id -g)" /var/cache/ccache ;sudo chmod -R 0755 /var/cache/ccache ;echo "CCACHE_DIR=/var/cache/ccache" >> $GITHUB_ENV
 
       - name: Restore ccache
         uses: actions/cache/restore@main
@@ -72,11 +72,11 @@ jobs:
         timeout-minutes: 90
         run: echo "$(nix build $COMPACT_FLAKE#default.nix-cli^out --no-link --print-out-paths)/bin" >> "$GITHUB_PATH"
 
-      - name: Build NixOS configuration
+      - name: Build NixOS
         id: build
-        run: set -euo pipefail && echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --print-out-paths --show-trace --impure -L 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> "$GITHUB_OUTPUT"
+        run: set -euo pipefail ;echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --print-out-paths --show-trace --impure -L 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> "$GITHUB_OUTPUT"
 
-      - name: Print full build log
+      - name: Print full build.log
         if: always()
         run: test -f "$RUNNER_TEMP/build.log" && cat "$RUNNER_TEMP/build.log" || true
 
@@ -84,7 +84,7 @@ jobs:
         if: always()
         run: test -f "$RUNNER_TEMP/build.log" && grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" | sort -u | xargs -r -n1 nix log || true
 
-      - name: Upload full build log
+      - name: Upload-artifact full build.log
         if: always()
         uses: actions/upload-artifact@main
         with:
