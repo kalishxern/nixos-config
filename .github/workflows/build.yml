@@ -71,7 +71,7 @@ jobs:
 
       - name: Install nix-compact
         timeout-minutes: 90
-        run: pkg=$(nix build $COMPACT_FLAKE#default^out --no-link --print-out-paths) && echo "PATCHED_NIX=$pkg/bin/nix" >> $GITHUB_ENV
+        run: pkg=$(nix build $COMPACT_FLAKE#default.nix-cli^out --no-link --print-out-paths) && echo "PATCHED_NIX=$pkg/bin/nix" >> $GITHUB_ENV
 
       - name: Build NixOS configuration
         id: build
