@@ -17,12 +17,12 @@ jobs:
     env:
       NIXPKGS_ALLOW_UNFREE: 1
       NIXPKGS_ALLOW_INSECURE: 1
+      COMPACT_FLAKE: github:ghuntley/nix-compact/main
+      NIX_BUILD_LOG_DIR: /tmp/nix-build-logs
 
     steps:
       - name: Show runner CPU
-        run: |
-          lscpu
-          grep "model name" /proc/cpuinfo
+        run: lscpu && grep "model name" /proc/cpuinfo
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
@@ -39,24 +39,7 @@ jobs:
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Swap (zram + fallback swapfile)
-        run: |
-          sudo apt-get update && sudo apt upgrade -y
-          if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then
-            sudo apt-get install -y zram-tools
-            echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap
-            sudo systemctl restart zramswap.service
-          else
-            echo "zram module unavailable this run, skipping"
-          fi
-
-          sudo rm -rf /swapfile
-          sudo fallocate -l 4G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon -p 16383 /swapfile
-
-          swapon --show
-          free -h
+        run: sudo apt-get update && sudo apt upgrade -y; if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then sudo apt-get install -y zram-tools; echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap; sudo systemctl restart zramswap.service; else echo "zram module unavailable this run, skipping"; fi; sudo rm -rf /swapfile && sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon -p 16383 /swapfile && swapon --show && free -h
 
       - name: Create missing /lib32
         run: sudo rm -f /lib32 && sudo mkdir -p /lib32
@@ -66,36 +49,19 @@ jobs:
           fetch-depth: 3
 
       - name: Prepare ccache dir
-        run: |
-          sudo mkdir -p /var/cache/ccache
-          sudo chown -R "$(id -u):$(id -g)" /var/cache/ccache
-          sudo chmod -R 0755 /var/cache/ccache
-          echo "CCACHE_DIR=/var/cache/ccache" >> $GITHUB_ENV
+        run: sudo mkdir -p /var/cache/ccache && sudo chown -R "$(id -u):$(id -g)" /var/cache/ccache && sudo chmod -R 0755 /var/cache/ccache && echo "CCACHE_DIR=/var/cache/ccache" >> $GITHUB_ENV
 
       - name: Restore ccache
         uses: actions/cache/restore@main
         with:
           path: /var/cache/ccache
           key: ccache-${{ runner.os }}-${{ hashFiles('flake.lock') }}-${{ github.run_id }}
-          restore-keys: |
-            ccache-${{ runner.os }}-${{ hashFiles('flake.lock') }}-
-            ccache-${{ runner.os }}-
+          restore-keys: "ccache-${{ runner.os }}-${{ hashFiles('flake.lock') }}-\nccache-${{ runner.os }}-\n"
 
       - uses: DeterminateSystems/nix-installer-action@main
         with:
           flakehub: false
-          extra-conf: |
-            sandbox = false
-            max-jobs = auto
-            cores = 0
-            max-silent-time = 3600
-            keep-outputs = true
-            keep-derivations = true
-            fallback = true
-            http-connections = 128
-            connect-timeout = 15
-            stalled-download-timeout = 15
-            log-lines = 300
+          extra-conf: "sandbox = false\nmax-jobs = auto\ncores = 0\nmax-silent-time = 3600\nkeep-outputs = true\nkeep-derivations = true\nfallback = true\nhttp-connections = 128\nconnect-timeout = 15\nstalled-download-timeout = 15\nlog-lines = 300\n"
 
       - uses: cachix/cachix-action@master
         with:
@@ -103,19 +69,28 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           extraPullNames: nix-community
 
+      - name: Install nix-compact
+        timeout-minutes: 90
+        run: pkg=$(nix build $COMPACT_FLAKE#default^out --no-link --print-out-paths) && echo "PATCHED_NIX=$pkg/bin/nix" >> $GITHUB_ENV
+
       - name: Build NixOS configuration
         id: build
-        run: |
-          set -euo pipefail
-          echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --option log-lines 300 --print-out-paths --show-trace --impure -L 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> $GITHUB_OUTPUT
+        run: r=$($PATCHED_NIX build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --option log-lines 300 --print-out-paths --show-trace --impure) && echo "result=$r" >> $GITHUB_OUTPUT
 
-      - name: Show logs of failed derivations
-        if: always()
-        run: grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" | sort -u | xargs -r -n1 nix log
+      - name: Show build diagnostics
+        if: always() && (steps.build.outcome == 'failure' || steps.build.outcome == 'cancelled')
+        run: $PATCHED_NIX build-log $NIX_BUILD_LOG_DIR/*.jsonl --diagnostics --limit 15 && $PATCHED_NIX build-log $NIX_BUILD_LOG_DIR/*.jsonl --diagnostic D1 --context 40
+
+      - name: Upload full build log
+        if: always() && (steps.build.outcome == 'failure' || steps.build.outcome == 'cancelled')
+        uses: actions/upload-artifact@main
+        with:
+          name: nix-build-log
+          path: ${{ env.NIX_BUILD_LOG_DIR }}
+          retention-days: 7
 
       - name: Explicitly push all dependencies to Cachix
-        run: |
-          nix path-info -r ${{ steps.build.outputs.result }} --impure 2>/dev/null | cachix push kalishxern-nixos || true
+        run: nix path-info -r ${{ steps.build.outputs.result }} --impure 2>/dev/null | cachix push kalishxern-nixos || true
 
       - name: Save ccache
         if: always()
@@ -128,8 +103,4 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh cache list --key "ccache-${{ runner.os }}-" --limit 100 --json id,key,ref \
-            | jq -r --arg current "${{ github.run_id }}" \
-              '.[] | select(.key | contains($current) | not) | .id' \
-            | xargs -r -n1 gh cache delete
+        run: gh cache list --key "ccache-${{ runner.os }}-" --limit 100 --json id,key,ref | jq -r --arg current "${{ github.run_id }}" '.[] | select(.key | contains($current) | not) | .id' | xargs -r -n1 gh cache delete
