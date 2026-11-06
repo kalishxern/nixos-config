@@ -17,7 +17,6 @@ jobs:
     env:
       NIXPKGS_ALLOW_UNFREE: 1
       NIXPKGS_ALLOW_INSECURE: 1
-      COMPACT_FLAKE: github:ghuntley/nix-compact/main
 
     steps:
       - name: CPU
@@ -68,17 +67,13 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           extraPullNames: nix-community
 
-      - name: Install nix-compact
-        timeout-minutes: 90
-        run: 'set -euo pipefail ;echo "COMPACT_FLAKE=${COMPACT_FLAKE}" ;nix --version ;COMPACT_STORE_PATH="$(nix build "${COMPACT_FLAKE}#default.nix-cli^out" --no-link --print-out-paths)" ;echo "COMPACT_STORE_PATH=${COMPACT_STORE_PATH}" ;if test -z "${COMPACT_STORE_PATH}" ;then echo "ERROR: nix build returned empty store path" ;exit 1 ;fi ;if test -d "${COMPACT_STORE_PATH}/bin" ;then ls -la "${COMPACT_STORE_PATH}/bin" ;else echo "ERROR: missing bin dir at ${COMPACT_STORE_PATH}" ;ls -la "${COMPACT_STORE_PATH}" ;exit 1 ;fi ;echo "${COMPACT_STORE_PATH}/bin" >> "$GITHUB_PATH" ;echo "GITHUB_PATH now contains:" ;cat "$GITHUB_PATH"'
-
       - name: Build NixOS
         id: build
         run: set -euo pipefail ;echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --print-out-paths --show-trace --impure 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> "$GITHUB_OUTPUT"
 
       - name: Print full build logs
         if: always()
-        run: set +e ;for f in ~/.local/state/nix/build-logs/*.jsonl ;do if test -f "$f" ;then nix build-log "$f" ;fi ;done ;if test -f "$RUNNER_TEMP/build.log" ;then cat "$RUNNER_TEMP/build.log" ;fi ;set -e
+        run: set +e ;if test -f "$RUNNER_TEMP/build.log" ;then cat "$RUNNER_TEMP/build.log" ;fi ;set -e
 
       - name: Show logs of failed derivations
         if: always()
@@ -89,7 +84,7 @@ jobs:
         uses: actions/upload-artifact@main
         with:
           name: build-logs
-          path: /home/runner/.local/state/nix/build-logs/
+          path: ${{ runner.temp }}/build.log
           if-no-files-found: ignore
 
       - name: Explicitly push all dependencies to Cachix
