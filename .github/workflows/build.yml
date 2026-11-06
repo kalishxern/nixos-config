@@ -23,6 +23,9 @@ jobs:
       - name: Show runner CPU
         run: lscpu && grep "model name" /proc/cpuinfo
 
+      - name: Swap (zram + fallback swapfile)
+        run: sudo apt-get update && sudo apt upgrade -y; if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then sudo apt-get install -y zram-tools; echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap; sudo systemctl restart zramswap.service; fi; sudo rm -rf /swapfile && sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon -p 16383 /swapfile && swapon --show && free -h
+
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -36,9 +39,6 @@ jobs:
 
       - name: Allow unprivileged user namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-
-      - name: Swap (zram + fallback swapfile)
-        run: sudo apt-get update; if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then sudo apt-get install -y zram-tools; echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap; sudo systemctl restart zramswap.service; else echo "zram module unavailable this run, skipping"; fi; sudo rm -rf /swapfile && sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon -p 16383 /swapfile && swapon --show && free -h
 
       - name: Create missing /lib32
         run: sudo rm -f /lib32 && sudo mkdir -p /lib32
@@ -60,7 +60,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
         with:
           flakehub: false
-          extra-conf: "sandbox = false\nmax-jobs = auto\ncores = 0\nmax-silent-time = 3600\nkeep-outputs = true\nkeep-derivations = true\nfallback = true\nhttp-connections = 128\nconnect-timeout = 15\nstalled-download-timeout = 15\nlog-lines = 300\n"
+          extra-conf: "sandbox = false\nmax-jobs = auto\ncores = 0\nmax-silent-time = 3600\nkeep-outputs = true\nkeep-derivations = true\nfallback = true\nhttp-connections = 128\nconnect-timeout = 15\nstalled-download-timeout = 15\n"
 
       - uses: cachix/cachix-action@master
         with:
@@ -70,15 +70,15 @@ jobs:
 
       - name: Install nix-compact
         timeout-minutes: 90
-        run: pkg=$(nix build $COMPACT_FLAKE#default.nix-cli^out --no-link --print-out-paths) && echo "PATCHED_NIX=$pkg/bin/nix" >> $GITHUB_ENV
+        run: echo "$(nix build $COMPACT_FLAKE#default.nix-cli^out --no-link --print-out-paths)/bin" >> "$GITHUB_PATH"
 
       - name: Build NixOS configuration
         id: build
-        run: r=$($PATCHED_NIX build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --option log-lines 300 --print-out-paths --show-trace --impure -L 2> >(tee "$RUNNER_TEMP/build.log" >&2)) && echo "result=$r" >> $GITHUB_OUTPUT
+        run: set -euo pipefail && echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --print-out-paths --show-trace --impure -L 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> "$GITHUB_OUTPUT"
 
-      - name: Show build diagnostics
+      - name: Show logs of failed derivations
         if: always()
-        run: cat "$RUNNER_TEMP/build.log"
+        run: test -f "$RUNNER_TEMP/build.log" && grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" | sort -u | xargs -r -n1 nix log || true
 
       - name: Explicitly push all dependencies to Cachix
         run: nix path-info -r ${{ steps.build.outputs.result }} --impure 2>/dev/null | cachix push kalishxern-nixos || true
