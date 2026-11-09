@@ -31,7 +31,7 @@ jobs:
           haskell: true
           large-packages: true
           docker-images: true
-          swap-storage: true
+          swap-storage: false
 
       - name: RAM
         run: sudo apt-get update ;if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram ;then sudo apt-get install -y zram-tools ;{ echo 'ALGO=lz4' ;echo 'PERCENT=200' ;echo 'PRIORITY=32766' ;} > /tmp/zramswap ;sudo install -m 644 /tmp/zramswap /etc/default/zramswap ;sudo systemctl restart zramswap.service ;fi ;sudo swapoff -a ;sudo rm -f /swapfile ;sudo fallocate -l 4G /swapfile ;sudo chmod 600 /swapfile ;sudo mkswap /swapfile ;sudo swapon -p 16383 /swapfile ;swapon --show ;free -h
