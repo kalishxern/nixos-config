@@ -59,7 +59,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
         with:
           flakehub: false
-          extra-conf: "sandbox = false\nmax-jobs = auto\ncores = 0\nmax-silent-time = 3600\nkeep-outputs = true\nkeep-derivations = true\nfallback = true\nhttp-connections = 128\nconnect-timeout = 15\nstalled-download-timeout = 15\n"
+          extra-conf: "sandbox = false\nmax-jobs = auto\ncores = 0\nmax-silent-time = 3600\nkeep-outputs = false\nkeep-derivations = false\nfallback = true\nhttp-connections = 128\nconnect-timeout = 15\nstalled-download-timeout = 15\nauto-optimise-store = true\nmin-free = 32212254720\nmax-free = 64424509440\n"
 
       - uses: cachix/cachix-action@master
         with:
