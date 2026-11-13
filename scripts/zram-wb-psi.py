@@ -175,7 +175,7 @@ def _trigger_writeback(wb_type: str) -> bool:
     before = _bd_writes()
     val = f"type={wb_type}" if _wb_keyval else wb_type
     ok = write_sysfs(CFG.wb_file, val)
-    if not ok and _wb_keyval and _last_errno not in (errno.EAGAIN, errno.ENOMEM):
+    if not ok and _wb_keyval and _last_errno == errno.EINVAL:
         _wb_keyval = False; log.warning("key=value writeback syntax rejected by kernel; falling back to legacy bare-word form.")
         ok = write_sysfs(CFG.wb_file, wb_type)
     if not ok:
@@ -202,7 +202,7 @@ def _trigger_compact() -> bool:
     log.info("compact freed %s pages in zsmalloc pool on %s", freed if freed >= 0 else "?", CFG.zram_dev)
     return True
 
-_last_rearm_ts = 0.0
+_last_rearm_ts = time.monotonic()
 def _maybe_rearm_wb_budget() -> None:
     global _last_rearm_ts
     if CFG.wb_limit_mb <= 0: return
@@ -211,8 +211,10 @@ def _maybe_rearm_wb_budget() -> None:
     remaining = _wb_budget_pages()
     if remaining < 0: return
     if remaining <= int(CFG.wb_limit_mb * 256 * 0.10):
-        if write_sysfs(f"{CFG.zram_sysfs}/writeback_limit", str(CFG.wb_limit_mb * 256)): log.info("writeback_limit re-armed to %d MB on %s (was %.1f MB remaining).", CFG.wb_limit_mb, CFG.zram_dev, remaining / 256.0)
-    _last_rearm_ts = now
+        pages = str(CFG.wb_limit_mb * 256)
+        if write_sysfs(f"{CFG.zram_sysfs}/writeback_limit", pages) and write_sysfs(f"{CFG.zram_sysfs}/writeback_limit_enable", "1"):
+            _last_rearm_ts = now
+            log.info("writeback_limit re-armed to %d MB on %s (was %.1f MB remaining).", CFG.wb_limit_mb, CFG.zram_dev, remaining / 256.0)
 
 def _run_cycle(limiter: "TokenBucket") -> None:
     if not limiter.consume():
@@ -295,7 +297,10 @@ def _apply_reload_file(cfg: "Config") -> Optional[str]:
 def _apply_reload(psi_fh, poller, psi_fd: int):
     if not CFG.hot_reload_path:
         log.warning("Reload requested but ZRAM_WB_HOT_RELOAD_PATH is not set; nothing to reload."); return psi_fh, psi_fd
+    was_recomp = CFG.recomp_enable
     new_trigger = _apply_reload_file(CFG)
+    if CFG.recomp_enable != was_recomp or (CFG.recomp_enable and not _recomp_available):
+        _register_recomp_algo()
     log.info("Reloaded tunables from %s (idle_age_sec=%s wb_interval_sec=%s wb_burst=%s idle_mark_sec=%s)", CFG.hot_reload_path, CFG.idle_age_sec, CFG.wb_interval_sec, CFG.wb_burst, CFG.idle_mark_sec)
 
     if new_trigger and new_trigger != CFG.psi_trigger:
@@ -369,7 +374,9 @@ def main() -> int:
         log.warning("Worker still mid-writeback after grace period; process will remain alive until it finishes (not force-killed).")
     worker.join()
 
-    log.info("Flushing final metrics…"); _flush_metrics(); psi_fh.close()
+    if CFG.metrics_path:
+        log.info("Flushing final metrics…"); _flush_metrics()
+    psi_fh.close()
     try: os.close(wake_r)
     except OSError: pass
     log.info("Exited cleanly.")
