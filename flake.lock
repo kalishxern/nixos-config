@@ -742,17 +742,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794888131,
-        "narHash": "sha256-eDXn2wSXK7zYx+6ZUBP2r2ovjsGzHxR3G7REq+ermQY=",
-        "owner": "crmne",
+        "lastModified": 1795254359,
+        "narHash": "sha256-WgEdvon9JTweu02JcZGy8xQ7WeG3xi+9dNyQnJbA2gc=",
+        "owner": "caveman210",
         "repo": "zapfast",
-        "rev": "a6f0f624a4a82dbdc5b0b08e721794fbe943348a",
+        "rev": "e540059823e0a5d1f59bef00adbff77e17abf074",
         "type": "github"
       },
       "original": {
-        "owner": "crmne",
-        "ref": "v0.21.3",
+        "owner": "caveman210",
         "repo": "zapfast",
+        "rev": "e540059823e0a5d1f59bef00adbff77e17abf074",
         "type": "github"
       }
     }

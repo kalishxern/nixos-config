@@ -202,6 +202,13 @@ def _trigger_compact() -> bool:
     log.info("compact freed %s pages in zsmalloc pool on %s", freed if freed >= 0 else "?", CFG.zram_dev)
     return True
 
+def _ensure_wb_limit() -> None:
+    global _last_rearm_ts
+    try:
+        with open(f"{CFG.zram_sysfs}/writeback_limit_enable") as fh: armed = fh.read().strip() == "1"
+    except OSError: return
+    if CFG.wb_limit_mb > 0 and not armed and write_sysfs(f"{CFG.zram_sysfs}/writeback_limit", str(CFG.wb_limit_mb * 256)) and write_sysfs(f"{CFG.zram_sysfs}/writeback_limit_enable", "1"): _last_rearm_ts = time.monotonic(); log.warning("writeback_limit was off after a zram reset; armed %s MB on %s.", CFG.wb_limit_mb, CFG.zram_dev)
+
 _last_rearm_ts = time.monotonic()
 def _maybe_rearm_wb_budget() -> None:
     global _last_rearm_ts
@@ -223,7 +230,7 @@ def _run_cycle(limiter: "TokenBucket") -> None:
         return
     _maybe_rearm_wb_budget()
     with METRICS_LOCK: METRICS.last_cycle_pages_written = 0
-    log.info("Marking pages idle (age >= %s) on %s …", f"{int(CFG.idle_age_sec)}s" if _idle_by_age else "all", CFG.zram_dev)
+    _ensure_wb_limit(); log.info("Marking pages idle (age >= %s) on %s …", f"{int(CFG.idle_age_sec)}s" if _idle_by_age else "all", CFG.zram_dev)
     if not _mark_idle():
         _bump("writebacks_failed")
         if CFG.metrics_path: _flush_metrics()
@@ -244,7 +251,7 @@ def _worker() -> None:
         try: _event_queue.get(timeout=1.0)
         except queue.Empty: continue
         if _stop_event.is_set(): break
-        try: _run_cycle(limiter)
+        try: log.debug("Uptime not past idle_age_sec; no page can be idle yet, skipping cycle.") if _idle_by_age and time.clock_gettime(time.CLOCK_BOOTTIME) <= CFG.idle_age_sec else _run_cycle(limiter)
         except Exception: log.exception("Unhandled exception mid-cycle on %s; worker stays alive.", CFG.zram_dev); _bump("errors")
         while not _event_queue.empty():
             try: _event_queue.get_nowait()
