@@ -352,7 +352,7 @@ def main() -> int:
     wake_r, wake_w = os.pipe(); os.set_blocking(wake_w, False); signal.set_wakeup_fd(wake_w)
     psi_fd = psi_fh.fileno()
 
-    worker = threading.Thread(target=_worker, name="wb-worker", daemon=False); worker.start()
+    worker = threading.Thread(target=_worker, name="wb-worker", daemon=False); worker.start(); _flush_metrics() if CFG.metrics_path else None
 
     poller = select.poll(); poller.register(psi_fd, select.POLLPRI); poller.register(wake_r, select.POLLIN)
 
